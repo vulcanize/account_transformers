@@ -390,9 +390,9 @@
     "pkg/geth/converters/common",
     "pkg/geth/converters/rpc",
     "pkg/geth/node",
-    "pkg/omni/shared/contract",
-    "pkg/omni/shared/helpers",
-    "pkg/omni/shared/types",
+    "pkg/contract_watcher/shared/contract",
+    "pkg/contract_watcher/shared/helpers",
+    "pkg/contract_watcher/shared/types",
     "pkg/plugin/helpers",
   ]
   pruneopts = ""
@@ -536,7 +536,7 @@
     "github.com/vulcanize/vulcanizedb/pkg/geth/client",
     "github.com/vulcanize/vulcanizedb/pkg/geth/converters/rpc",
     "github.com/vulcanize/vulcanizedb/pkg/geth/node",
-    "github.com/vulcanize/vulcanizedb/pkg/omni/shared/helpers",
+    "github.com/vulcanize/vulcanizedb/pkg/contract_watcher/shared/helpers",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
