@@ -109,6 +109,18 @@ func CleanFullTestDB(db *postgres.DB) {
 	db.MustExec("DELETE FROM accounts.topic0_filtered_logs")
 }
 
+func CleanLightTestDB(db *postgres.DB) {
+	db.MustExec("DELETE FROM blocks")
+	db.MustExec("DELETE FROM headers")
+	db.MustExec("DELETE FROM checked_headers")
+	db.MustExec("DELETE FROM log_filters")
+	db.MustExec("DELETE FROM logs")
+	db.MustExec("DELETE FROM receipts")
+	db.MustExec("DELETE FROM transactions")
+	db.MustExec("DELETE FROM watched_contracts")
+	db.MustExec("DELETE FROM accounts.token_value_transfers")
+}
+
 // Returns a new test node, with the same ID
 func NewTestNode() core.Node {
 	return core.Node{
