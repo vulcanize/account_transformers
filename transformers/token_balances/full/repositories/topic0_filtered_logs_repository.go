@@ -17,12 +17,13 @@
 package repositories
 
 import (
+	"github.com/jmoiron/sqlx"
 	"github.com/vulcanize/vulcanizedb/pkg/core"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 )
 
 type Topic0FilteredLogsRepository interface {
-	GetFilteredLogs(name string, start, end int64) ([]*core.WatchedEvent, error)
+	GetFilteredLogs(name string, start, end int64) ([]*core.WatchedEvent, int64, error)
 }
 
 type topic0FilteredLogsRepository struct {
@@ -35,26 +36,61 @@ func NewTopic0FilteredLogsRepository(db *postgres.DB) *topic0FilteredLogsReposit
 	}
 }
 
-func (flr *topic0FilteredLogsRepository) GetFilteredLogs(name string, start, end int64) ([]*core.WatchedEvent, error) {
-	query := `SELECT id, name, block_number, address, tx_hash, index, topic0, topic1, topic2, topic3, data FROM accounts.topic0_filtered_logs
-			WHERE name = $1 AND block_number BETWEEN $2 AND $3`
-	rows, err := flr.DB.Queryx(query, name, start, end)
-	if err != nil {
-		return nil, err
+func (flr *topic0FilteredLogsRepository) GetFilteredLogs(name string, start, end int64) ([]*core.WatchedEvent, int64, error) {
+	var query string
+	var rows *sqlx.Rows
+	var err error
+	if end < 0 {
+		query = `SELECT id, name, block_number, address, tx_hash, index, topic0, topic1, topic2, topic3, data FROM accounts.topic0_filtered_logs
+			WHERE name = $1 AND block_number >= $2
+			ORDER BY accounts.topic0_filtered_logs.block_number LIMIT 500`
+		rows, err = flr.DB.Queryx(query, name, start)
+		if err != nil {
+			return nil, start, err
+		}
+	} else {
+		query = `SELECT id, name, block_number, address, tx_hash, index, topic0, topic1, topic2, topic3, data FROM accounts.topic0_filtered_logs
+			WHERE name = $1 AND block_number BETWEEN $2 AND $3
+			ORDER BY accounts.topic0_filtered_logs.block_number LIMIT 500`
+		rows, err = flr.DB.Queryx(query, name, start, end)
+		if err != nil {
+			return nil, start, err
+		}
 	}
 	defer rows.Close()
 
-	lgs := make([]*core.WatchedEvent, 0)
+	logs := make([]*core.WatchedEvent, 0)
 	for rows.Next() {
-		lg := new(core.WatchedEvent)
-		err = rows.StructScan(lg)
+		log := new(core.WatchedEvent)
+		err = rows.StructScan(log)
 		if err != nil {
-			return nil, err
+			return nil, start, err
 		}
-		lgs = append(lgs, lg)
+		logs = append(logs, log)
 	}
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, start, err
 	}
-	return lgs, nil
+	contiguousLogs, nextStart := contiguousFilteredLogs(logs, start)
+	return contiguousLogs, nextStart, nil
+}
+
+func contiguousFilteredLogs(logs []*core.WatchedEvent, start int64) ([]*core.WatchedEvent, int64) {
+	if len(logs) < 1 {
+		return []*core.WatchedEvent{}, start
+	}
+	if logs[0].BlockNumber != start {
+		return []*core.WatchedEvent{}, start
+	}
+	contiguousLogs := make([]*core.WatchedEvent, 0, len(logs))
+	contiguousLogs = append(contiguousLogs, logs[0])
+	index := start + 1
+	for _, log := range logs {
+		if log.BlockNumber != index {
+			return contiguousLogs, index
+		}
+		contiguousLogs = append(contiguousLogs, log)
+		index++
+	}
+	return contiguousLogs, index
 }
