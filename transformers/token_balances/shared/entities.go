@@ -23,47 +23,47 @@ import (
 )
 
 type TransferEntity struct {
-	From           common.Address
-	To             common.Address
-	Value          *big.Int
+	From  common.Address
+	To    common.Address
+	Value *big.Int
 }
 
 type MintEntity struct {
-	To             common.Address
-	Amount         *big.Int
+	To     common.Address
+	Amount *big.Int
 }
 
 type WipedAccountEntity struct {
-	Account           common.Address
-	Balance          *big.Int
+	Account common.Address
+	Balance *big.Int
 }
 
 type BurnEntity struct {
-	Burner           common.Address
-	Value          *big.Int
+	Burner common.Address
+	Value  *big.Int
 }
 
 type WipeBlacklistedAccountEntity struct {
-	Account           common.Address
-	Balance          *big.Int
+	Account common.Address
+	Balance *big.Int
 }
 
 type DestroyedBlackFundsEntity struct {
-	BlackListedUser  common.Address
-	Balance          *big.Int
+	BlackListedUser common.Address
+	Balance         *big.Int
 }
 
 type IssueEntity struct {
-	Amount          *big.Int
+	Amount *big.Int
 }
 
 type RedeemEntity struct {
-	Amount          *big.Int
+	Amount *big.Int
 }
 
 type TransferFromEntity struct {
-	Spender        common.Address
-	From           common.Address
-	To             common.Address
-	Value          *big.Int
+	Spender common.Address
+	From    common.Address
+	To      common.Address
+	Value   *big.Int
 }

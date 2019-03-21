@@ -17,13 +17,13 @@
 package light
 
 type ValueTransferModel struct {
-	HeaderID int64
-	Name string
-	Src string
-	Dst string
-	Amount string
-	Contract string
-	LogIndex uint
+	HeaderID         int64
+	Name             string
+	Src              string
+	Dst              string
+	Amount           string
+	Contract         string
+	LogIndex         uint
 	TransactionIndex uint
-	Raw []byte
+	Raw              []byte
 }

@@ -18,7 +18,6 @@ package light
 
 import (
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
-
 )
 
 type ValueTransferEventRepository interface {

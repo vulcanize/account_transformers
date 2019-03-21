@@ -35,7 +35,7 @@ type Converter interface {
 
 type converter struct {
 	boundContract *bind.BoundContract
-	boundEvent     constants.Label
+	boundEvent    constants.Label
 }
 
 func NewConverter(abis map[constants.Label]string) *converter {
@@ -142,15 +142,15 @@ func (c *converter) convertTransfers(logs []types.Log, headerID int64) ([]ValueT
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			HeaderID : headerID,
-			Name: c.boundEvent.String(),
-			Src: unpackedTransfer.From.Hex(),
-			Dst: unpackedTransfer.To.Hex(),
-			Amount: unpackedTransfer.Value.String(),
-			Contract: log.Address.Hex(),
-			LogIndex: log.Index,
+			HeaderID:         headerID,
+			Name:             c.boundEvent.String(),
+			Src:              unpackedTransfer.From.Hex(),
+			Dst:              unpackedTransfer.To.Hex(),
+			Amount:           unpackedTransfer.Value.String(),
+			Contract:         log.Address.Hex(),
+			LogIndex:         log.Index,
 			TransactionIndex: log.TxIndex,
-			Raw: raw,
+			Raw:              raw,
 		})
 	}
 	return models, nil
@@ -169,15 +169,15 @@ func (c *converter) convertMints(logs []types.Log, headerID int64) ([]ValueTrans
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			HeaderID : headerID,
-			Name: c.boundEvent.String(),
-			Src: "0x0",
-			Dst: unpackedMint.To.Hex(),
-			Amount: unpackedMint.Amount.String(),
-			Contract: log.Address.Hex(),
-			LogIndex: log.Index,
+			HeaderID:         headerID,
+			Name:             c.boundEvent.String(),
+			Src:              "0x0",
+			Dst:              unpackedMint.To.Hex(),
+			Amount:           unpackedMint.Amount.String(),
+			Contract:         log.Address.Hex(),
+			LogIndex:         log.Index,
 			TransactionIndex: log.TxIndex,
-			Raw: raw,
+			Raw:              raw,
 		})
 	}
 	return models, nil
@@ -196,15 +196,15 @@ func (c *converter) convertWipedAccounts(logs []types.Log, headerID int64) ([]Va
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			HeaderID : headerID,
-			Name: c.boundEvent.String(),
-			Src: unpackedWipedAccount.Account.Hex(),
-			Dst: "0x0",
-			Amount: unpackedWipedAccount.Balance.String(),
-			Contract: log.Address.Hex(),
-			LogIndex: log.Index,
+			HeaderID:         headerID,
+			Name:             c.boundEvent.String(),
+			Src:              unpackedWipedAccount.Account.Hex(),
+			Dst:              "0x0",
+			Amount:           unpackedWipedAccount.Balance.String(),
+			Contract:         log.Address.Hex(),
+			LogIndex:         log.Index,
 			TransactionIndex: log.TxIndex,
-			Raw: raw,
+			Raw:              raw,
 		})
 	}
 	return models, nil
@@ -223,15 +223,15 @@ func (c *converter) convertBurns(logs []types.Log, headerID int64) ([]ValueTrans
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			HeaderID : headerID,
-			Name: c.boundEvent.String(),
-			Src: unpackedBurn.Burner.Hex(),
-			Dst: "0x0",
-			Amount: unpackedBurn.Value.String(),
-			Contract: log.Address.Hex(),
-			LogIndex: log.Index,
+			HeaderID:         headerID,
+			Name:             c.boundEvent.String(),
+			Src:              unpackedBurn.Burner.Hex(),
+			Dst:              "0x0",
+			Amount:           unpackedBurn.Value.String(),
+			Contract:         log.Address.Hex(),
+			LogIndex:         log.Index,
 			TransactionIndex: log.TxIndex,
-			Raw: raw,
+			Raw:              raw,
 		})
 	}
 	return models, nil
@@ -250,15 +250,15 @@ func (c *converter) convertWipeBlacklistedAccounts(logs []types.Log, headerID in
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			HeaderID : headerID,
-			Name: c.boundEvent.String(),
-			Src: unpackedWBAE.Account.Hex(),
-			Dst: "0x0",
-			Amount: unpackedWBAE.Balance.String(),
-			Contract: log.Address.Hex(),
-			LogIndex: log.Index,
+			HeaderID:         headerID,
+			Name:             c.boundEvent.String(),
+			Src:              unpackedWBAE.Account.Hex(),
+			Dst:              "0x0",
+			Amount:           unpackedWBAE.Balance.String(),
+			Contract:         log.Address.Hex(),
+			LogIndex:         log.Index,
 			TransactionIndex: log.TxIndex,
-			Raw: raw,
+			Raw:              raw,
 		})
 	}
 	return models, nil
@@ -277,15 +277,15 @@ func (c *converter) convertDestroyedBlackFunds(logs []types.Log, headerID int64)
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			HeaderID : headerID,
-			Name: c.boundEvent.String(),
-			Src: unpackedDBF.BlackListedUser.Hex(),
-			Dst: "0x0",
-			Amount: unpackedDBF.Balance.String(),
-			Contract: log.Address.Hex(),
-			LogIndex: log.Index,
+			HeaderID:         headerID,
+			Name:             c.boundEvent.String(),
+			Src:              unpackedDBF.BlackListedUser.Hex(),
+			Dst:              "0x0",
+			Amount:           unpackedDBF.Balance.String(),
+			Contract:         log.Address.Hex(),
+			LogIndex:         log.Index,
 			TransactionIndex: log.TxIndex,
-			Raw: raw,
+			Raw:              raw,
 		})
 	}
 	return models, nil
@@ -304,15 +304,15 @@ func (c *converter) convertIssues(logs []types.Log, headerID int64) ([]ValueTran
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			HeaderID : headerID,
-			Name: c.boundEvent.String(),
-			Src: "0x0",
-			Dst: log.Address.Hex(),
-			Amount: unpackedIssue.Amount.String(),
-			Contract: log.Address.Hex(),
-			LogIndex: log.Index,
+			HeaderID:         headerID,
+			Name:             c.boundEvent.String(),
+			Src:              "0x0",
+			Dst:              log.Address.Hex(),
+			Amount:           unpackedIssue.Amount.String(),
+			Contract:         log.Address.Hex(),
+			LogIndex:         log.Index,
 			TransactionIndex: log.TxIndex,
-			Raw: raw,
+			Raw:              raw,
 		})
 	}
 	return models, nil
@@ -331,15 +331,15 @@ func (c *converter) convertRedeems(logs []types.Log, headerID int64) ([]ValueTra
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			HeaderID : headerID,
-			Name: c.boundEvent.String(),
-			Src: log.Address.Hex(),
-			Dst: "0x0",
-			Amount: unpackedRedeem.Amount.String(),
-			Contract: log.Address.Hex(),
-			LogIndex: log.Index,
+			HeaderID:         headerID,
+			Name:             c.boundEvent.String(),
+			Src:              log.Address.Hex(),
+			Dst:              "0x0",
+			Amount:           unpackedRedeem.Amount.String(),
+			Contract:         log.Address.Hex(),
+			LogIndex:         log.Index,
 			TransactionIndex: log.TxIndex,
-			Raw: raw,
+			Raw:              raw,
 		})
 	}
 	return models, nil
@@ -358,15 +358,15 @@ func (c *converter) convertTransferFroms(logs []types.Log, headerID int64) ([]Va
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			HeaderID : headerID,
-			Name: c.boundEvent.String(),
-			Src: unpackedTransferFrom.From.Hex(),
-			Dst: unpackedTransferFrom.To.Hex(),
-			Amount: unpackedTransferFrom.Value.String(),
-			Contract: log.Address.Hex(),
-			LogIndex: log.Index,
+			HeaderID:         headerID,
+			Name:             c.boundEvent.String(),
+			Src:              unpackedTransferFrom.From.Hex(),
+			Dst:              unpackedTransferFrom.To.Hex(),
+			Amount:           unpackedTransferFrom.Value.String(),
+			Contract:         log.Address.Hex(),
+			LogIndex:         log.Index,
 			TransactionIndex: log.TxIndex,
-			Raw: raw,
+			Raw:              raw,
 		})
 	}
 	return models, nil

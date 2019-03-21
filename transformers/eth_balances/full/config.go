@@ -17,5 +17,4 @@
 package full
 
 type EthBalancesConfig struct {
-
 }

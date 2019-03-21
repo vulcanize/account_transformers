@@ -17,5 +17,4 @@
 package light
 
 type EthBalancesConfig struct {
-
 }

@@ -25,20 +25,20 @@ import (
 )
 
 type tokenBalanceTransformer struct {
-	Converter Converter
-	FilterRepository repositories.Topic0FilterRepository
-	FilteredLogsRepository repositories.Topic0FilteredLogsRepository
+	Converter                    Converter
+	FilterRepository             repositories.Topic0FilterRepository
+	FilteredLogsRepository       repositories.Topic0FilteredLogsRepository
 	ValueTransferEventRepository repositories.ValueTransferEventRepository
-	Filters []filters.LogFilter
+	Filters                      []filters.LogFilter
 }
 
 func NewTokenBalanceTransformer(db *postgres.DB) *tokenBalanceTransformer {
 	return &tokenBalanceTransformer{
-		Converter: NewConverter(constants.ABIs),
-		FilterRepository: repositories.NewTopic0FilterRepository(db),
-		FilteredLogsRepository: repositories.NewTopic0FilteredLogsRepository(db),
+		Converter:                    NewConverter(constants.ABIs),
+		FilterRepository:             repositories.NewTopic0FilterRepository(db),
+		FilteredLogsRepository:       repositories.NewTopic0FilteredLogsRepository(db),
 		ValueTransferEventRepository: repositories.NewTokenBalanceRepository(db),
-		Filters: constants.Filters,
+		Filters:                      constants.Filters,
 	}
 }
 

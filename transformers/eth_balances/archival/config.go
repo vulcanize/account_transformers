@@ -17,5 +17,4 @@
 package eth_balances
 
 type EthBalancesConfig struct {
-
 }

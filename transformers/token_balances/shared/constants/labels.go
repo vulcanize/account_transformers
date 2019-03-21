@@ -21,45 +21,45 @@ import "strings"
 type Label string
 
 const (
-	Transfer Label = "Transfer"
-	TransferDev Label = "TransferDeviation"
-	Mint Label = "Mint"
-	MintDev Label = "MintDeviation"
-	WipedAccount Label = "WipedAccount"
-	WipedAccountDev Label = "WipedAccountDeviation"
-	Burn Label = "Burn"
-	BurnDev Label = "BurnDeviation"
-	WipeBlacklistedAccount Label = "WipeBlacklistedAccount"
+	Transfer                  Label = "Transfer"
+	TransferDev               Label = "TransferDeviation"
+	Mint                      Label = "Mint"
+	MintDev                   Label = "MintDeviation"
+	WipedAccount              Label = "WipedAccount"
+	WipedAccountDev           Label = "WipedAccountDeviation"
+	Burn                      Label = "Burn"
+	BurnDev                   Label = "BurnDeviation"
+	WipeBlacklistedAccount    Label = "WipeBlacklistedAccount"
 	WipeBlacklistedAccountDev Label = "WipeBlacklistedAccountDeviation"
-	DestroyedBlackFunds Label = "DestroyedBlackFunds"
-	DestroyedBlackFundsDev Label = "DestroyedBlackFundsDeviation"
-	Issue Label = "Issue"
-	IssueDev Label = "IssueDeviation"
-	Redeem Label = "Redeem"
-	RedeemDev Label = "RedeemDeviation"
-	TransferFrom Label = "TransferFrom"
-	TransferFromDev Label = "TransferFromDeviation"
+	DestroyedBlackFunds       Label = "DestroyedBlackFunds"
+	DestroyedBlackFundsDev    Label = "DestroyedBlackFundsDeviation"
+	Issue                     Label = "Issue"
+	IssueDev                  Label = "IssueDeviation"
+	Redeem                    Label = "Redeem"
+	RedeemDev                 Label = "RedeemDeviation"
+	TransferFrom              Label = "TransferFrom"
+	TransferFromDev           Label = "TransferFromDeviation"
 )
 
 var labels = map[string]Label{
-	"Transfer" : Transfer,
-	"TransferDeviation" : TransferDev,
-	"Mint" : Mint,
-	"MintDeviation" : MintDev,
-	"WipedAccount" : WipedAccount,
-	"WipedAccountDeviation" : WipedAccountDev,
-	"Burn" : Burn,
-	"BurnDeviation" : BurnDev,
-	"WipeBlacklistedAccount" : WipeBlacklistedAccount,
-	"WipeBlacklistedAccountDeviation" : WipeBlacklistedAccountDev,
-	"DestroyedBlackFunds" : DestroyedBlackFunds,
-	"DestroyedBlackFundsDeviation" : DestroyedBlackFundsDev,
-	"Issue" : Issue,
-	"IssueDeviation" : IssueDev,
-	"Redeem" : Redeem,
-	"RedeemDeviation" : RedeemDev,
-	"TransferFrom" : TransferFrom,
-	"TransferFromDeviation" : TransferFromDev,
+	"Transfer":                        Transfer,
+	"TransferDeviation":               TransferDev,
+	"Mint":                            Mint,
+	"MintDeviation":                   MintDev,
+	"WipedAccount":                    WipedAccount,
+	"WipedAccountDeviation":           WipedAccountDev,
+	"Burn":                            Burn,
+	"BurnDeviation":                   BurnDev,
+	"WipeBlacklistedAccount":          WipeBlacklistedAccount,
+	"WipeBlacklistedAccountDeviation": WipeBlacklistedAccountDev,
+	"DestroyedBlackFunds":             DestroyedBlackFunds,
+	"DestroyedBlackFundsDeviation":    DestroyedBlackFundsDev,
+	"Issue":                           Issue,
+	"IssueDeviation":                  IssueDev,
+	"Redeem":                          Redeem,
+	"RedeemDeviation":                 RedeemDev,
+	"TransferFrom":                    TransferFrom,
+	"TransferFromDeviation":           TransferFromDev,
 }
 
 func NewLabel(name string) Label {

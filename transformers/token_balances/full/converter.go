@@ -34,7 +34,7 @@ type Converter interface {
 
 type converter struct {
 	boundContract *bind.BoundContract
-	boundEvent     constants.Label
+	boundEvent    constants.Label
 }
 
 func NewConverter(abis map[constants.Label]string) *converter {
@@ -135,11 +135,11 @@ func (c *converter) convertTransfers(watchedEvents []*core.WatchedEvent) ([]Valu
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			Name: we.Name,
-			Src: unpackedTransfer.From.Hex(),
-			Dst: unpackedTransfer.To.Hex(),
-			Amount: unpackedTransfer.Value.String(),
-			Contract: we.Address,
+			Name:           we.Name,
+			Src:            unpackedTransfer.From.Hex(),
+			Dst:            unpackedTransfer.To.Hex(),
+			Amount:         unpackedTransfer.Value.String(),
+			Contract:       we.Address,
 			VulcanizeLogID: we.LogID,
 		})
 	}
@@ -156,11 +156,11 @@ func (c *converter) convertMints(watchedEvents []*core.WatchedEvent) ([]ValueTra
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			Name: we.Name,
-			Src: "0x0",
-			Dst: unpackedMint.To.Hex(),
-			Amount: unpackedMint.Amount.String(),
-			Contract: we.Address,
+			Name:           we.Name,
+			Src:            "0x0",
+			Dst:            unpackedMint.To.Hex(),
+			Amount:         unpackedMint.Amount.String(),
+			Contract:       we.Address,
 			VulcanizeLogID: we.LogID,
 		})
 	}
@@ -177,11 +177,11 @@ func (c *converter) convertWipedAccounts(watchedEvents []*core.WatchedEvent) ([]
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			Name: we.Name,
-			Src: unpackedWipedAccount.Account.Hex(),
-			Dst: "0x0",
-			Amount: unpackedWipedAccount.Balance.String(),
-			Contract: we.Address,
+			Name:           we.Name,
+			Src:            unpackedWipedAccount.Account.Hex(),
+			Dst:            "0x0",
+			Amount:         unpackedWipedAccount.Balance.String(),
+			Contract:       we.Address,
 			VulcanizeLogID: we.LogID,
 		})
 	}
@@ -198,11 +198,11 @@ func (c *converter) convertBurns(watchedEvents []*core.WatchedEvent) ([]ValueTra
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			Name: we.Name,
-			Src: unpackedBurn.Burner.Hex(),
-			Dst: "0x0",
-			Amount: unpackedBurn.Value.String(),
-			Contract: we.Address,
+			Name:           we.Name,
+			Src:            unpackedBurn.Burner.Hex(),
+			Dst:            "0x0",
+			Amount:         unpackedBurn.Value.String(),
+			Contract:       we.Address,
 			VulcanizeLogID: we.LogID,
 		})
 	}
@@ -219,11 +219,11 @@ func (c *converter) convertWipeBlacklistedAccounts(watchedEvents []*core.Watched
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			Name: we.Name,
-			Src: unpackedWBAE.Account.Hex(),
-			Dst: "0x0",
-			Amount: unpackedWBAE.Balance.String(),
-			Contract: we.Address,
+			Name:           we.Name,
+			Src:            unpackedWBAE.Account.Hex(),
+			Dst:            "0x0",
+			Amount:         unpackedWBAE.Balance.String(),
+			Contract:       we.Address,
 			VulcanizeLogID: we.LogID,
 		})
 	}
@@ -240,11 +240,11 @@ func (c *converter) convertDestroyedBlackFunds(watchedEvents []*core.WatchedEven
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			Name: we.Name,
-			Src: unpackedDBF.BlackListedUser.Hex(),
-			Dst: "0x0",
-			Amount: unpackedDBF.Balance.String(),
-			Contract: we.Address,
+			Name:           we.Name,
+			Src:            unpackedDBF.BlackListedUser.Hex(),
+			Dst:            "0x0",
+			Amount:         unpackedDBF.Balance.String(),
+			Contract:       we.Address,
 			VulcanizeLogID: we.LogID,
 		})
 	}
@@ -261,11 +261,11 @@ func (c *converter) convertIssues(watchedEvents []*core.WatchedEvent) ([]ValueTr
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			Name: we.Name,
-			Src: "0x0",
-			Dst: we.Address,
-			Amount: unpackedIssue.Amount.String(),
-			Contract: we.Address,
+			Name:           we.Name,
+			Src:            "0x0",
+			Dst:            we.Address,
+			Amount:         unpackedIssue.Amount.String(),
+			Contract:       we.Address,
 			VulcanizeLogID: we.LogID,
 		})
 	}
@@ -282,11 +282,11 @@ func (c *converter) convertRedeems(watchedEvents []*core.WatchedEvent) ([]ValueT
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			Name: we.Name,
-			Src: we.Address,
-			Dst: "0x0",
-			Amount: unpackedRedeem.Amount.String(),
-			Contract: we.Address,
+			Name:           we.Name,
+			Src:            we.Address,
+			Dst:            "0x0",
+			Amount:         unpackedRedeem.Amount.String(),
+			Contract:       we.Address,
 			VulcanizeLogID: we.LogID,
 		})
 	}
@@ -303,11 +303,11 @@ func (c *converter) convertTransferFroms(watchedEvents []*core.WatchedEvent) ([]
 			return nil, err
 		}
 		models = append(models, ValueTransferModel{
-			Name: we.Name,
-			Src: unpackedTransferFrom.From.Hex(),
-			Dst: unpackedTransferFrom.To.Hex(),
-			Amount: unpackedTransferFrom.Value.String(),
-			Contract: we.Address,
+			Name:           we.Name,
+			Src:            unpackedTransferFrom.From.Hex(),
+			Dst:            unpackedTransferFrom.To.Hex(),
+			Amount:         unpackedTransferFrom.Value.String(),
+			Contract:       we.Address,
 			VulcanizeLogID: we.LogID,
 		})
 	}

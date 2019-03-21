@@ -26,7 +26,7 @@ type Topic0FilterRepository interface {
 }
 
 type topic0FilterRepository struct {
-	DB 	*postgres.DB
+	DB *postgres.DB
 }
 
 func NewTopic0FilterRepository(db *postgres.DB) *topic0FilterRepository {

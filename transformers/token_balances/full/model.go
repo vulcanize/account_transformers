@@ -17,10 +17,10 @@
 package full
 
 type ValueTransferModel struct {
-	Name string
-	Src string
-	Dst string
-	Amount string
-	Contract string
+	Name           string
+	Src            string
+	Dst            string
+	Amount         string
+	Contract       string
 	VulcanizeLogID int64
 }

@@ -25,16 +25,16 @@ import (
 )
 
 type tokenBalanceTransformer struct {
-	Converter Converter
-	Fetcher   fetcher.Fetcher
-	HeaderRepository repository.HeaderRepository
+	Converter                    Converter
+	Fetcher                      fetcher.Fetcher
+	HeaderRepository             repository.HeaderRepository
 	ValueTransferEventRepository ValueTransferEventRepository
 }
 
 func NewTokenBalanceTransformer(db *postgres.DB) *tokenBalanceTransformer {
 	return &tokenBalanceTransformer{
-		Converter: NewConverter(constants.ABIs),
-		HeaderRepository: repository.NewHeaderRepository(db),
+		Converter:                    NewConverter(constants.ABIs),
+		HeaderRepository:             repository.NewHeaderRepository(db),
 		ValueTransferEventRepository: NewTokenBalanceRepository(db),
 	}
 }
