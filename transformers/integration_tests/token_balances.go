@@ -14,15 +14,4 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package initializer
-
-import (
-	"github.com/vulcanize/vulcanizedb/libraries/shared/transformer"
-
-	"github.com/vulcanize/account_transformers/transformers/account/config"
-	"github.com/vulcanize/account_transformers/transformers/account/light"
-)
-
-var ContractTransformerInitializer transformer.ContractTransformerInitializer = light.TokenBalanceTransformer{
-	Config: config.MainnetAccountConfig,
-}.NewTransformer
+package integration_tests

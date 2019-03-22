@@ -13,5 +13,28 @@
 
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+package config
 
-package light_test
+import (
+	"github.com/vulcanize/vulcanizedb/pkg/config"
+)
+
+var MainnetAccountConfig = config.ContractConfig{
+	Name:    "Accout-mainnet",
+	Network: "",
+}
+
+var RopstenAccountConfig = config.ContractConfig{
+	Name:    "Account-ropsten",
+	Network: "ropsten",
+}
+
+var RinkebyAccountConfig = config.ContractConfig{
+	Name:    "Account-rinkeby",
+	Network: "ropsten",
+}
+
+var KovanccountConfig = config.ContractConfig{
+	Name:    "Account-kovan",
+	Network: "kovan",
+}
