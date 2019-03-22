@@ -1,7 +1,21 @@
 [database]
-    name = "vulcanize_public"
+    name     = "vulcanize_public"
     hostname = "localhost"
-    port = 5432
+    port     = 5432
 
 [client]
     ipcPath = ""
+
+[exporter]
+    home     = "github.com/vulcanize/vulcanizedb"
+    name     = "accountTransformerExporter"
+    save     = false
+    transformerNames = [
+        "account"
+    ]
+    [exporter.account]
+        path = "transformers/account/light/initializer"
+        type = "eth_contract"
+        repository = "github.com/vulcanize/account_transformers"
+        migrations = "db/migrations"
+        rank = "0"

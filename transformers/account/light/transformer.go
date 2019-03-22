@@ -18,6 +18,8 @@ package light
 
 import (
 	"github.com/vulcanize/vulcanizedb/libraries/shared/fetcher"
+	"github.com/vulcanize/vulcanizedb/libraries/shared/transformer"
+	"github.com/vulcanize/vulcanizedb/pkg/config"
 	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/core"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
@@ -28,7 +30,8 @@ import (
 	"github.com/vulcanize/account_transformers/transformers/account/shared/poller"
 )
 
-type tokenBalanceTransformer struct {
+type TokenBalanceTransformer struct {
+	Config                       config.ContractConfig
 	ValueTransferConverter       converters.ValueTransferConverter
 	TokenBalanceConverter        converters.TokenBalanceConverter
 	Fetcher                      fetcher.Fetcher
@@ -41,8 +44,8 @@ type tokenBalanceTransformer struct {
 	NextStart                    int64
 }
 
-func NewAccountTransformer(db *postgres.DB, blockChain core.BlockChain) *tokenBalanceTransformer {
-	return &tokenBalanceTransformer{
+func (tbt *TokenBalanceTransformer) NewTransformer(db *postgres.DB, blockChain core.BlockChain) transformer.ContractTransformer {
+	return &TokenBalanceTransformer{
 		ValueTransferConverter:       converters.NewValueTransferConverter(),
 		TokenBalanceConverter:        converters.NewTokenBalanceConverter(),
 		Fetcher:                      *fetcher.NewFetcher(blockChain),
@@ -56,11 +59,11 @@ func NewAccountTransformer(db *postgres.DB, blockChain core.BlockChain) *tokenBa
 	}
 }
 
-func (tbt *tokenBalanceTransformer) Init() error {
+func (tbt *TokenBalanceTransformer) Init() error {
 	return nil
 }
 
-func (tbt *tokenBalanceTransformer) Execute() error {
+func (tbt *TokenBalanceTransformer) Execute() error {
 	missingHeaders, err := tbt.HeaderRepository.MissingHeaders(tbt.NextStart, -1, "token_value_transfers")
 	if err != nil {
 		return err
@@ -126,4 +129,8 @@ func (tbt *tokenBalanceTransformer) Execute() error {
 		}
 	}
 	return nil
+}
+
+func (tbt *TokenBalanceTransformer) GetConfig() config.ContractConfig {
+	return tbt.Config
 }
