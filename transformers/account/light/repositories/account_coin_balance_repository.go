@@ -1,5 +1,5 @@
 // VulcanizeDB
-// Copyright © 2018 Vulcanize
+// Copyright © 2019 Vulcanize
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -25,11 +25,11 @@ import (
 	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 
-	"github.com/vulcanize/account_transformers/transformers/account/light/models"
+	"github.com/vulcanize/account_transformers/transformers/account/shared"
 )
 
 type AccountCoinBalanceRepository interface {
-	CreateCoinBalanceRecord(balanceRecords []models.CoinBalanceRecord, headerID int64) error
+	CreateCoinBalanceRecord(balanceRecords []shared.CoinBalanceRecord, headerID int64) error
 }
 
 type accountCoinBalanceRepository struct {
@@ -42,7 +42,7 @@ func NewAccountCoinBalanceRepository(db *postgres.DB) *accountCoinBalanceReposit
 	}
 }
 
-func (acbr *accountCoinBalanceRepository) CreateCoinBalanceRecord(balanceRecords []models.CoinBalanceRecord, headerID int64) error {
+func (acbr *accountCoinBalanceRepository) CreateCoinBalanceRecord(balanceRecords []shared.CoinBalanceRecord, headerID int64) error {
 	tx, err := acbr.DB.Beginx()
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func (acbr *accountCoinBalanceRepository) CreateCoinBalanceRecord(balanceRecords
 			DO UPDATE SET
 			(value,
 			value_fetched_at,
-			updated_at) = ($3, $4, %6)`
+			updated_at) = ($3, $4, $6)`
 	for _, record := range balanceRecords {
 		now := time.Now()
 		_, err := tx.Exec(pgStr, record.Address, record.BlockNumber, utilities.NullToZero(record.Value), now, now, now)
@@ -67,11 +67,11 @@ func (acbr *accountCoinBalanceRepository) CreateCoinBalanceRecord(balanceRecords
 			tx.Rollback()
 			return err
 		}
-		err = repository.MarkHeaderCheckedInTransaction(headerID, tx, common.BytesToAddress(record.Address).Hex())
+		err = repository.MarkHeaderCheckedInTransaction(headerID, tx, "account_"+common.BytesToAddress(record.Address).Hex())
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
-	return nil
+	return tx.Commit()
 }

@@ -1,5 +1,5 @@
 // VulcanizeDB
-// Copyright © 2018 Vulcanize
+// Copyright © 2019 Vulcanize
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -14,4 +14,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package integration_tests
+package models
+
+type ValueTransferModel struct {
+	HeaderID         int64 `db:"header_id"`
+	Name             string
+	BlockNumber      int64 `db:"block_number"`
+	Dst              string
+	Src              string
+	Amount           string
+	Contract         string
+	LogIndex         uint `db:"log_idx"`
+	TransactionIndex uint `db:"tx_idx"`
+	Raw              []byte
+}

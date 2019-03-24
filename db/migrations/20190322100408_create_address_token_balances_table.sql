@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE accounts.address_token_balances (
-  id                          BIGINT PRIMARY KEY,
+  id                          SERIAL PRIMARY KEY,
   address_hash                BYTEA NOT NULL,
   block_number                BIGINT NOT NULL,
   token_contract_address_hash BYTEA NOT NULL,

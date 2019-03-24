@@ -1,5 +1,5 @@
 // VulcanizeDB
-// Copyright © 2018 Vulcanize
+// Copyright © 2019 Vulcanize
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -23,11 +23,11 @@ import (
 
 	"github.com/vulcanize/vulcanizedb/pkg/core"
 
-	"github.com/vulcanize/account_transformers/transformers/account/light/models"
+	"github.com/vulcanize/account_transformers/transformers/account/shared"
 )
 
 type AccountPoller interface {
-	PollAccounts(accounts []common.Address, blockNumber int64) ([]models.CoinBalanceRecord, error)
+	PollAccounts(accounts []common.Address, blockNumber int64) ([]shared.CoinBalanceRecord, error)
 }
 
 type accountPoller struct {
@@ -40,10 +40,10 @@ func NewAccountPoller(bc core.BlockChain) *accountPoller {
 	}
 }
 
-func (ap *accountPoller) PollAccounts(accounts []common.Address, blockNumber int64) ([]models.CoinBalanceRecord, error) {
-	balanceRecords := make([]models.CoinBalanceRecord, 0)
+func (ap *accountPoller) PollAccounts(accounts []common.Address, blockNumber int64) ([]shared.CoinBalanceRecord, error) {
+	balanceRecords := make([]shared.CoinBalanceRecord, 0)
 	for _, addr := range accounts {
-		record := models.CoinBalanceRecord{
+		record := shared.CoinBalanceRecord{
 			BlockNumber: blockNumber,
 			Address:     addr.Bytes(),
 		}

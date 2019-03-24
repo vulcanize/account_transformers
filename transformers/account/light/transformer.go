@@ -1,5 +1,5 @@
 // VulcanizeDB
-// Copyright © 2018 Vulcanize
+// Copyright © 2019 Vulcanize
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -17,17 +17,17 @@
 package light
 
 import (
-	"github.com/vulcanize/vulcanizedb/libraries/shared/fetcher"
-	"github.com/vulcanize/vulcanizedb/libraries/shared/transformer"
-	"github.com/vulcanize/vulcanizedb/pkg/config"
-	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
-	"github.com/vulcanize/vulcanizedb/pkg/core"
-	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
-
+	"errors"
 	"github.com/vulcanize/account_transformers/transformers/account/light/converters"
 	"github.com/vulcanize/account_transformers/transformers/account/light/repositories"
 	"github.com/vulcanize/account_transformers/transformers/account/shared/constants"
 	"github.com/vulcanize/account_transformers/transformers/account/shared/poller"
+	"github.com/vulcanize/vulcanizedb/libraries/shared/transformer"
+	"github.com/vulcanize/vulcanizedb/pkg/config"
+	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/fetcher"
+	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
+	"github.com/vulcanize/vulcanizedb/pkg/core"
+	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 )
 
 type TokenBalanceTransformer struct {
@@ -44,11 +44,11 @@ type TokenBalanceTransformer struct {
 	NextStart                    int64
 }
 
-func (tbt *TokenBalanceTransformer) NewTransformer(db *postgres.DB, blockChain core.BlockChain) transformer.ContractTransformer {
+func (tbt TokenBalanceTransformer) NewTransformer(db *postgres.DB, blockChain core.BlockChain) transformer.ContractTransformer {
 	return &TokenBalanceTransformer{
-		ValueTransferConverter:       converters.NewValueTransferConverter(),
+		ValueTransferConverter:       converters.NewValueTransferConverter(constants.EquivalentTokenAddressesMapping()),
 		TokenBalanceConverter:        converters.NewTokenBalanceConverter(),
-		Fetcher:                      *fetcher.NewFetcher(blockChain),
+		Fetcher:                      fetcher.NewFetcher(blockChain),
 		HeaderRepository:             repository.NewHeaderRepository(db),
 		AddressRepository:            repositories.NewAccountHeaderRepository(db),
 		ValueTransferEventRepository: repositories.NewValueTransferEventRepository(db),
@@ -60,7 +60,11 @@ func (tbt *TokenBalanceTransformer) NewTransformer(db *postgres.DB, blockChain c
 }
 
 func (tbt *TokenBalanceTransformer) Init() error {
-	return nil
+	configuredAccountAddress := constants.AccountAddresses()
+	for _, addr := range configuredAccountAddress {
+		tbt.AddressRepository.AddAddress(addr.Hex())
+	}
+	return tbt.HeaderRepository.AddCheckColumn("token_value_transfers")
 }
 
 func (tbt *TokenBalanceTransformer) Execute() error {
@@ -94,26 +98,36 @@ func (tbt *TokenBalanceTransformer) Execute() error {
 		}
 		tbt.NextStart = header.BlockNumber + 1
 	}
+
+	// Get the addresses we want to create eth and token balance records for
 	addresses, err := tbt.AddressRepository.GetAddresses()
 	if err != nil {
 		return err
 	}
+	if len(addresses) < 1 {
+		return errors.New("no addresses to create records for")
+	}
+
 	addressIds := make([]string, 0, len(addresses))
 	for _, addr := range addresses {
-		addressIds = append(addressIds, addr.Hex())
+		addressIds = append(addressIds, "account_"+addr.Hex())
 	}
+	// Add these ids to the checked_header table
 	err = tbt.HeaderRepository.AddCheckColumns(addressIds)
 	if err != nil {
 		return err
 	}
 	// Now we need to go through and process the value transfer records into token balance records for our users
 	checkedButNotRecordedHeaders, err := tbt.HeaderRepository.MissingMethodsCheckedEventsIntersection(0, -1, addressIds, []string{"token_value_transfers"})
+	if err != nil {
+		return err
+	}
 	for _, header := range checkedButNotRecordedHeaders {
 		mappedValueTransferRecords, err := tbt.ValueTransferEventRepository.GetTokenValueTransferRecordsForAccounts(addresses, header.BlockNumber)
 		if err != nil {
 			return err
 		}
-		tokenBalanceRecords := tbt.TokenBalanceConverter.Convert(mappedValueTransferRecords, header.BlockNumber)
+		tokenBalanceRecords := tbt.TokenBalanceConverter.Convert(mappedValueTransferRecords, header.Id)
 		err = tbt.TokenBalanceRepository.CreateTokenBalanceRecords(tokenBalanceRecords, header.Id)
 		if err != nil {
 			return err

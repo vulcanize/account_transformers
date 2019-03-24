@@ -1,5 +1,5 @@
 // VulcanizeDB
-// Copyright © 2018 Vulcanize
+// Copyright © 2019 Vulcanize
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -22,9 +22,8 @@ import (
 	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 
-	"github.com/vulcanize/account_transformers/transformers/account/shared"
-
 	"github.com/vulcanize/account_transformers/transformers/account/light/models"
+	"github.com/vulcanize/account_transformers/transformers/account/shared"
 )
 
 type ValueTransferEventRepository interface {
@@ -49,35 +48,37 @@ func (br *valueTransferEventRepository) CreateTokenValueTransferRecords(records 
 	}
 	pgStr := `INSERT INTO accounts.token_value_transfers  
 		(header_id,
+		block_number,
 		name,
-		dst," 
-		src," 
+		dst, 
+		src,
 		amount,
 		contract,
-		log_idx
+		log_idx,
 		tx_idx,
 		raw_log) VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (header_id, tx_idx, log_idx) DO UPDATE SET 
-		(name,
-		dst," 
-		src," 
+		(block_number,
+		name,
+		dst, 
+		src, 
 		amount,
 		contract,
-		raw_log) = ($2, $3, $4, $5, $6, $9)`
-	for _, model := range records {
-		_, err := tx.Exec(pgStr, model.HeaderID, model.Name, model.Dst, model.Src, shared.NullToZero(model.Amount), model.Contract, model.LogIndex, model.TransactionIndex, model.Raw)
+		raw_log) = ($2, $3, $4, $5, $6, $7, $10)`
+	for _, record := range records {
+		_, err := tx.Exec(pgStr, record.HeaderID, record.BlockNumber, record.Name, record.Dst, record.Src, shared.NullToZero(record.Amount), record.Contract, record.LogIndex, record.TransactionIndex, record.Raw)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
-		err = repository.MarkHeaderCheckedInTransaction(model.HeaderID, tx, "token_value_transfers")
+		err = repository.MarkHeaderCheckedInTransaction(record.HeaderID, tx, "token_value_transfers")
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
-	return nil
+	return tx.Commit()
 }
 
 func (br *valueTransferEventRepository) GetTokenValueTransferRecordsForAccounts(addresses []common.Address, lastBlock int64) (map[common.Address][]models.ValueTransferModel, error) {

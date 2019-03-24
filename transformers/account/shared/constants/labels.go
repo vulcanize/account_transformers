@@ -1,5 +1,5 @@
 // VulcanizeDB
-// Copyright © 2018 Vulcanize
+// Copyright © 2019 Vulcanize
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -16,60 +16,40 @@
 
 package constants
 
-import "strings"
-
 type Label string
 
 const (
-	Transfer                  Label = "Transfer"
-	TransferDev               Label = "TransferDeviation"
-	Mint                      Label = "Mint"
-	MintDev                   Label = "MintDeviation"
-	WipedAccount              Label = "WipedAccount"
-	WipedAccountDev           Label = "WipedAccountDeviation"
-	Burn                      Label = "Burn"
-	BurnDev                   Label = "BurnDeviation"
-	WipeBlacklistedAccount    Label = "WipeBlacklistedAccount"
-	WipeBlacklistedAccountDev Label = "WipeBlacklistedAccountDeviation"
-	DestroyedBlackFunds       Label = "DestroyedBlackFunds"
-	DestroyedBlackFundsDev    Label = "DestroyedBlackFundsDeviation"
-	Issue                     Label = "Issue"
-	IssueDev                  Label = "IssueDeviation"
-	Redeem                    Label = "Redeem"
-	RedeemDev                 Label = "RedeemDeviation"
-	TransferFrom              Label = "TransferFrom"
-	TransferFromDev           Label = "TransferFromDeviation"
+	Transfer               Label = "Transfer"
+	Mint                   Label = "Mint"
+	WipedAccount           Label = "WipedAccount"
+	Burn                   Label = "Burn"
+	WipeBlacklistedAccount Label = "WipeBlacklistedAccount"
+	DestroyedBlackFunds    Label = "DestroyedBlackFunds"
+	Issue                  Label = "Issue"
+	Redeem                 Label = "Redeem"
+	TransferFrom           Label = "TransferFrom"
+	Deposit                Label = "Deposit"
+	Withdrawal             Label = "Withdrawal"
 )
 
 var labels = map[string]Label{
-	"Transfer":                        Transfer,
-	"TransferDeviation":               TransferDev,
-	"Mint":                            Mint,
-	"MintDeviation":                   MintDev,
-	"WipedAccount":                    WipedAccount,
-	"WipedAccountDeviation":           WipedAccountDev,
-	"Burn":                            Burn,
-	"BurnDeviation":                   BurnDev,
-	"WipeBlacklistedAccount":          WipeBlacklistedAccount,
-	"WipeBlacklistedAccountDeviation": WipeBlacklistedAccountDev,
-	"DestroyedBlackFunds":             DestroyedBlackFunds,
-	"DestroyedBlackFundsDeviation":    DestroyedBlackFundsDev,
-	"Issue":                           Issue,
-	"IssueDeviation":                  IssueDev,
-	"Redeem":                          Redeem,
-	"RedeemDeviation":                 RedeemDev,
-	"TransferFrom":                    TransferFrom,
-	"TransferFromDeviation":           TransferFromDev,
+	"Transfer":               Transfer,
+	"Mint":                   Mint,
+	"WipedAccount":           WipedAccount,
+	"Burn":                   Burn,
+	"WipeBlacklistedAccount": WipeBlacklistedAccount,
+	"DestroyedBlackFunds":    DestroyedBlackFunds,
+	"Issue":                  Issue,
+	"Redeem":                 Redeem,
+	"TransferFrom":           TransferFrom,
+	"Deposit":                Deposit,
+	"Withdrawal":             Withdrawal,
 }
 
 func NewLabel(name string) Label {
 	return labels[name]
 }
 
-func (label Label) String() string {
+func (label Label) Name() string {
 	return string(label)
-}
-
-func (label Label) Event() string {
-	return strings.Replace(label.String(), "Deviation", "", 1)
 }
