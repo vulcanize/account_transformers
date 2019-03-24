@@ -1,5 +1,5 @@
 // VulcanizeDB
-// Copyright © 2018 Vulcanize
+// Copyright © 2019 Vulcanize
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -23,10 +23,11 @@ import (
 	"github.com/vulcanize/vulcanizedb/libraries/shared/utilities"
 
 	"github.com/vulcanize/account_transformers/transformers/account/light/models"
+	"github.com/vulcanize/account_transformers/transformers/account/shared"
 )
 
 type TokenBalanceConverter interface {
-	Convert(mappedTransferRecords map[common.Address][]models.ValueTransferModel, blockNumber int64) []models.TokenBalanceRecord
+	Convert(mappedTransferRecords map[common.Address][]models.ValueTransferModel, blockNumber int64) []shared.TokenBalanceRecord
 }
 
 type tokenBalanceConverter struct{}
@@ -35,12 +36,12 @@ func NewTokenBalanceConverter() *tokenBalanceConverter {
 	return &tokenBalanceConverter{}
 }
 
-func (c *tokenBalanceConverter) Convert(mappedTransferRecords map[common.Address][]models.ValueTransferModel, blockNumber int64) []models.TokenBalanceRecord {
-	balanceRecords := make([]models.TokenBalanceRecord, 0)
+func (c *tokenBalanceConverter) Convert(mappedTransferRecords map[common.Address][]models.ValueTransferModel, blockNumber int64) []shared.TokenBalanceRecord {
+	balanceRecords := make([]shared.TokenBalanceRecord, 0)
 	contractSortedTransferRecords := sortByContract(mappedTransferRecords)
 	for addr, mappedRecords := range contractSortedTransferRecords {
 		for contract, records := range mappedRecords {
-			tokenBalanceRecord := models.TokenBalanceRecord{
+			tokenBalanceRecord := shared.TokenBalanceRecord{
 				Address:         addr.Bytes(),
 				ContractAddress: contract.Bytes(),
 				BlockNumber:     blockNumber,
@@ -69,7 +70,6 @@ func sortByContract(mapping map[common.Address][]models.ValueTransferModel) map[
 	for addr, records := range mapping {
 		returnRecords[addr] = make(map[common.Address][]models.ValueTransferModel)
 		for _, record := range records {
-
 			returnRecords[addr][common.HexToAddress(record.Contract)] = append(returnRecords[addr][common.HexToAddress(record.Contract)], record)
 		}
 	}

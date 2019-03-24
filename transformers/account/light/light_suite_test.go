@@ -1,5 +1,5 @@
 // VulcanizeDB
-// Copyright © 2018 Vulcanize
+// Copyright © 2019 Vulcanize
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -17,12 +17,13 @@
 package light_test
 
 import (
+	"github.com/spf13/viper"
 	"io/ioutil"
-	"log"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	log "github.com/sirupsen/logrus"
 )
 
 func TestLightAccountTransformer(t *testing.T) {
@@ -31,5 +32,7 @@ func TestLightAccountTransformer(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+	viper.SetConfigName("integration")
+	viper.AddConfigPath("$GOPATH/src/github.com/vulcanize/account_transformers/environments/")
 	log.SetOutput(ioutil.Discard)
 })

@@ -14,10 +14,5 @@ CREATE TABLE accounts.token_value_transfers (
   UNIQUE (header_id, tx_idx, log_idx)
 );
 
-ALTER TABLE public.checked_headers
-  ADD COLUMN token_value_transfers INTEGER NOT NULL DEFAULT 0;
-
 -- +goose Down
 DROP TABLE accounts.token_value_transfers;
-ALTER TABLE public.checked_headers
-  DROP COLUMN token_value_transfers;

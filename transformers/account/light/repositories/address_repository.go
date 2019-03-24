@@ -1,5 +1,5 @@
 // VulcanizeDB
-// Copyright © 2018 Vulcanize
+// Copyright © 2019 Vulcanize
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -38,13 +38,13 @@ func NewAccountHeaderRepository(db *postgres.DB) *addressRepository {
 }
 
 func (ar *addressRepository) GetAddresses() ([]common.Address, error) {
-	dest := make([][]byte, 0)
+	dest := new([][]byte)
 	err := ar.DB.Select(dest, `SELECT * FROM accounts.addresses`)
 	if err != nil {
 		return nil, err
 	}
-	addresses := make([]common.Address, 0, len(dest))
-	for _, addrBytes := range dest {
+	addresses := make([]common.Address, 0, len(*dest))
+	for _, addrBytes := range *dest {
 		addr := common.BytesToAddress(addrBytes)
 		addresses = append(addresses, addr)
 	}
@@ -52,6 +52,6 @@ func (ar *addressRepository) GetAddresses() ([]common.Address, error) {
 }
 
 func (ar *addressRepository) AddAddress(addr string) error {
-	_, err := ar.DB.Exec(`INSTER INTO accounts.addresses (address) VALUES ($1)`, addr)
+	_, err := ar.DB.Exec(`INSERT INTO accounts.addresses (address) VALUES ($1) ON CONFLICT (address) DO NOTHING`, addr)
 	return err
 }

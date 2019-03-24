@@ -1,5 +1,5 @@
 // VulcanizeDB
-// Copyright © 2018 Vulcanize
+// Copyright © 2019 Vulcanize
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -20,16 +20,16 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
 
 	"github.com/vulcanize/vulcanizedb/libraries/shared/utilities"
+	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 
-	"github.com/vulcanize/account_transformers/transformers/account/light/models"
+	"github.com/vulcanize/account_transformers/transformers/account/shared"
 )
 
 type AccountTokenBalanceRepository interface {
-	CreateTokenBalanceRecords(models []models.TokenBalanceRecord, headerID int64) error
+	CreateTokenBalanceRecords(records []shared.TokenBalanceRecord, headerID int64) error
 }
 
 type accountTokenBalanceRepository struct {
@@ -42,7 +42,7 @@ func NewAccountTokenBalanceRepository(db *postgres.DB) *accountTokenBalanceRepos
 	}
 }
 
-func (atbr *accountTokenBalanceRepository) CreateTokenBalanceRecords(models []models.TokenBalanceRecord, headerID int64) error {
+func (atbr *accountTokenBalanceRepository) CreateTokenBalanceRecords(records []shared.TokenBalanceRecord, headerID int64) error {
 	tx, err := atbr.DB.Beginx()
 	if err != nil {
 		return err
@@ -60,19 +60,19 @@ func (atbr *accountTokenBalanceRepository) CreateTokenBalanceRecords(models []mo
 			DO UPDATE SET
 			(value,
 			value_fetched_at,
-			updated_at) = ($4, $5, %7)`
-	for _, model := range models {
+			updated_at) = ($4, $5, $7)`
+	for _, record := range records {
 		now := time.Now()
-		_, err := tx.Exec(pgStr, model.Address, model.BlockNumber, model.ContractAddress, utilities.NullToZero(model.Value), now, now, now)
+		_, err := tx.Exec(pgStr, record.Address, record.BlockNumber, record.ContractAddress, utilities.NullToZero(record.Value), now, now, now)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
-		err = repository.MarkHeaderCheckedInTransaction(headerID, tx, common.BytesToAddress(model.Address).Hex())
+		err = repository.MarkHeaderCheckedInTransaction(headerID, tx, common.BytesToAddress(record.Address).Hex())
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
-	return nil
+	return tx.Commit()
 }
