@@ -47,541 +47,496 @@ func NewValueTransferConverter(mappedEquivalentAddrs map[common.Address][]common
 }
 
 func (c *valueTransferConverter) Convert(ethLogs []types.Log, headerID, blockNumber int64) ([]models.ValueTransferModel, error) {
-	groupedLogs := c.group(ethLogs)
-	models := make([]models.ValueTransferModel, 0)
-	for label, logs := range groupedLogs {
-		c.boundEvent = label
-		unpackedModels, err := c.unpack(logs, headerID, blockNumber)
-		if err != nil {
-			return nil, err
-		}
-		models = append(models, unpackedModels...)
-	}
-	return models, nil
-}
-
-func (c *valueTransferConverter) group(ethLogs []types.Log) map[constants.Label][]types.Log {
-	groupedLogs := make(map[constants.Label][]types.Log, 0)
+	transferModels := make([]models.ValueTransferModel, 0, len(ethLogs))
 	for _, log := range ethLogs {
 		if len(log.Topics) < 1 {
 			continue
 		}
-		label := constants.NewLabelFromSignature(log.Topics[0].Hex())
-		if label.Name() == "" {
+		c.boundEvent = constants.NewLabelFromSignature(log.Topics[0].Hex())
+		if c.boundEvent.Name() == "" {
 			continue
 		}
-		groupedLogs[label] = append(groupedLogs[label], log)
+		unpackedModel, err := c.unpack(log, headerID, blockNumber)
+		if err != nil {
+			return nil, err
+		}
+		transferModels = append(transferModels, unpackedModel)
 	}
-	return groupedLogs
+
+	return transferModels, nil
 }
 
-func (c *valueTransferConverter) unpack(logs []types.Log, headerID, blockNumber int64) ([]models.ValueTransferModel, error) {
-	var records []models.ValueTransferModel
+func (c *valueTransferConverter) unpack(log types.Log, headerID, blockNumber int64) (models.ValueTransferModel, error) {
+	var record models.ValueTransferModel
 	var err error
 	switch c.boundEvent {
 	case constants.Transfer:
-		records, err = c.convertTransfers(logs, headerID, blockNumber)
+		record, err = c.convertTransfer(log, headerID, blockNumber)
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
 	case constants.Mint:
-		records, err = c.convertMints(logs, headerID, blockNumber)
+		record, err = c.convertMint(log, headerID, blockNumber)
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
 	case constants.WipedAccount:
-		records, err = c.convertWipedAccounts(logs, headerID, blockNumber)
+		record, err = c.convertWipedAccount(log, headerID, blockNumber)
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
 	case constants.Burn:
-		records, err = c.convertBurns(logs, headerID, blockNumber)
+		record, err = c.convertBurn(log, headerID, blockNumber)
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
 	case constants.WipeBlacklistedAccount:
-		records, err = c.convertWipeBlacklistedAccounts(logs, headerID, blockNumber)
+		record, err = c.convertWipeBlacklistedAccount(log, headerID, blockNumber)
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
 	case constants.DestroyedBlackFunds:
-		records, err = c.convertDestroyedBlackFunds(logs, headerID, blockNumber)
+		record, err = c.convertDestroyedBlackFund(log, headerID, blockNumber)
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
 	case constants.TransferFrom:
-		records, err = c.convertTransferFroms(logs, headerID, blockNumber)
+		record, err = c.convertTransferFrom(log, headerID, blockNumber)
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
 	case constants.Deposit:
-		records, err = c.convertDeposits(logs, headerID, blockNumber)
+		record, err = c.convertDeposit(log, headerID, blockNumber)
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
 	case constants.Withdrawal:
-		records, err = c.convertWithdrawals(logs, headerID, blockNumber)
+		record, err = c.convertWithdrawal(log, headerID, blockNumber)
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
 	}
-	return records, nil
+	return record, nil
 }
 
-func (c *valueTransferConverter) convertTransfers(logs []types.Log, headerID, blockNumber int64) ([]models.ValueTransferModel, error) {
-	var records []models.ValueTransferModel
+func (c *valueTransferConverter) convertTransfer(log types.Log, headerID, blockNumber int64) (models.ValueTransferModel, error) {
 	var parsedABI abi.ABI
 	var err error
-	for _, log := range logs {
-		switch len(log.Topics) {
-		case 1:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Transfer0Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 2:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Transfer1Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 3:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Transfer2Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 4:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Transfer3Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		}
-		boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
-		var unpackedTransfer shared.TransferEntity
-		err := boundContract.UnpackLog(&unpackedTransfer, c.boundEvent.Name(), log)
+	switch len(log.Topics) {
+	case 1:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Transfer0Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		raw, err := json.Marshal(log)
+	case 2:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Transfer1Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		records = append(records, models.ValueTransferModel{
-			HeaderID:         headerID,
-			Name:             c.boundEvent.Name(),
-			BlockNumber:      blockNumber,
-			Src:              unpackedTransfer.From.Hex(),
-			Dst:              unpackedTransfer.To.Hex(),
-			Amount:           unpackedTransfer.Value.String(),
-			Contract:         c.getEquivalent(log.Address),
-			LogIndex:         log.Index,
-			TransactionIndex: log.TxIndex,
-			Raw:              raw,
-		})
+	case 3:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Transfer2Indexed.String()))
+		if err != nil {
+			return models.ValueTransferModel{}, err
+		}
+	case 4:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Transfer3Indexed.String()))
+		if err != nil {
+			return models.ValueTransferModel{}, err
+		}
 	}
-	return records, nil
+	boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
+	var unpackedTransfer shared.TransferEntity
+	err = boundContract.UnpackLog(&unpackedTransfer, c.boundEvent.Name(), log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	raw, err := json.Marshal(log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	return models.ValueTransferModel{
+		HeaderID:         headerID,
+		Name:             c.boundEvent.Name(),
+		BlockNumber:      blockNumber,
+		Src:              unpackedTransfer.From.Hex(),
+		Dst:              unpackedTransfer.To.Hex(),
+		Amount:           unpackedTransfer.Value.String(),
+		Contract:         c.getEquivalent(log.Address),
+		LogIndex:         log.Index,
+		TransactionIndex: log.TxIndex,
+		Raw:              raw,
+	}, nil
 }
 
-func (c *valueTransferConverter) convertMints(logs []types.Log, headerID, blockNumber int64) ([]models.ValueTransferModel, error) {
-	var records []models.ValueTransferModel
+func (c *valueTransferConverter) convertMint(log types.Log, headerID, blockNumber int64) (models.ValueTransferModel, error) {
 	var parsedABI abi.ABI
 	var err error
-	for _, log := range logs {
-		switch len(log.Topics) {
-		case 1:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Mint0Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 2:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Mint1Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 3:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Mint2Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 4:
-			return nil, errors.New("converter: `Mint` event cannot have 4 topics")
-		}
-		boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
-		var unpackedMint shared.MintEntity
-		err := boundContract.UnpackLog(&unpackedMint, c.boundEvent.Name(), log)
+	switch len(log.Topics) {
+	case 1:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Mint0Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		raw, err := json.Marshal(log)
+	case 2:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Mint1Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		records = append(records, models.ValueTransferModel{
-			HeaderID:         headerID,
-			Name:             c.boundEvent.Name(),
-			BlockNumber:      blockNumber,
-			Src:              "0x0",
-			Dst:              unpackedMint.To.Hex(),
-			Amount:           unpackedMint.Amount.String(),
-			Contract:         c.getEquivalent(log.Address),
-			LogIndex:         log.Index,
-			TransactionIndex: log.TxIndex,
-			Raw:              raw,
-		})
+	case 3:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Mint2Indexed.String()))
+		if err != nil {
+			return models.ValueTransferModel{}, err
+		}
+	case 4:
+		return models.ValueTransferModel{}, errors.New("converter: `Mint` event cannot have 4 topics")
 	}
-	return records, nil
+	boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
+	var unpackedMint shared.MintEntity
+	err = boundContract.UnpackLog(&unpackedMint, c.boundEvent.Name(), log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	raw, err := json.Marshal(log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	return models.ValueTransferModel{
+		HeaderID:         headerID,
+		Name:             c.boundEvent.Name(),
+		BlockNumber:      blockNumber,
+		Src:              "0x0",
+		Dst:              unpackedMint.To.Hex(),
+		Amount:           unpackedMint.Amount.String(),
+		Contract:         c.getEquivalent(log.Address),
+		LogIndex:         log.Index,
+		TransactionIndex: log.TxIndex,
+		Raw:              raw,
+	}, nil
 }
 
-func (c *valueTransferConverter) convertWipedAccounts(logs []types.Log, headerID, blockNumber int64) ([]models.ValueTransferModel, error) {
-	var records []models.ValueTransferModel
+func (c *valueTransferConverter) convertWipedAccount(log types.Log, headerID, blockNumber int64) (models.ValueTransferModel, error) {
 	var parsedABI abi.ABI
 	var err error
-	for _, log := range logs {
-		switch len(log.Topics) {
-		case 1:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.WipedAccount0Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 2:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.WipedAccount1Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 3:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.WipedAccount2Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 4:
-			return nil, errors.New("converter: `WipedAccount` event cannot have 4 topics")
-		}
-		boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
-		var unpackedWipedAccount shared.WipedAccountEntity
-		err := boundContract.UnpackLog(&unpackedWipedAccount, c.boundEvent.Name(), log)
+	switch len(log.Topics) {
+	case 1:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.WipedAccount0Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		raw, err := json.Marshal(log)
+	case 2:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.WipedAccount1Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		records = append(records, models.ValueTransferModel{
-			HeaderID:         headerID,
-			Name:             c.boundEvent.Name(),
-			BlockNumber:      blockNumber,
-			Src:              unpackedWipedAccount.Account.Hex(),
-			Dst:              "0x0",
-			Amount:           unpackedWipedAccount.Balance.String(),
-			Contract:         c.getEquivalent(log.Address),
-			LogIndex:         log.Index,
-			TransactionIndex: log.TxIndex,
-			Raw:              raw,
-		})
+	case 3:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.WipedAccount2Indexed.String()))
+		if err != nil {
+			return models.ValueTransferModel{}, err
+		}
+	case 4:
+		return models.ValueTransferModel{}, errors.New("converter: `WipedAccount` event cannot have 4 topics")
 	}
-	return records, nil
+	boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
+	var unpackedWipedAccount shared.WipedAccountEntity
+	err = boundContract.UnpackLog(&unpackedWipedAccount, c.boundEvent.Name(), log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	raw, err := json.Marshal(log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	return models.ValueTransferModel{
+		HeaderID:         headerID,
+		Name:             c.boundEvent.Name(),
+		BlockNumber:      blockNumber,
+		Src:              unpackedWipedAccount.Account.Hex(),
+		Dst:              "0x0",
+		Amount:           unpackedWipedAccount.Balance.String(),
+		Contract:         c.getEquivalent(log.Address),
+		LogIndex:         log.Index,
+		TransactionIndex: log.TxIndex,
+		Raw:              raw,
+	}, nil
 }
 
-func (c *valueTransferConverter) convertBurns(logs []types.Log, headerID, blockNumber int64) ([]models.ValueTransferModel, error) {
-	var records []models.ValueTransferModel
+func (c *valueTransferConverter) convertBurn(log types.Log, headerID, blockNumber int64) (models.ValueTransferModel, error) {
 	var parsedABI abi.ABI
 	var err error
-	for _, log := range logs {
-		switch len(log.Topics) {
-		case 1:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Burn0Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 2:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Burn1Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 3:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Burn2Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 4:
-			return nil, errors.New("converter: `Burn` event cannot have 4 topics")
-		}
-		boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
-		var unpackedBurn shared.BurnEntity
-		err := boundContract.UnpackLog(&unpackedBurn, c.boundEvent.Name(), log)
+	switch len(log.Topics) {
+	case 1:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Burn0Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		raw, err := json.Marshal(log)
+	case 2:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Burn1Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		records = append(records, models.ValueTransferModel{
-			HeaderID:         headerID,
-			Name:             c.boundEvent.Name(),
-			BlockNumber:      blockNumber,
-			Src:              unpackedBurn.Burner.Hex(),
-			Dst:              "0x0",
-			Amount:           unpackedBurn.Value.String(),
-			Contract:         c.getEquivalent(log.Address),
-			LogIndex:         log.Index,
-			TransactionIndex: log.TxIndex,
-			Raw:              raw,
-		})
+	case 3:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Burn2Indexed.String()))
+		if err != nil {
+			return models.ValueTransferModel{}, err
+		}
+	case 4:
+		return models.ValueTransferModel{}, errors.New("converter: `Burn` event cannot have 4 topics")
 	}
-	return records, nil
+	boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
+	var unpackedBurn shared.BurnEntity
+	err = boundContract.UnpackLog(&unpackedBurn, c.boundEvent.Name(), log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	raw, err := json.Marshal(log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	return models.ValueTransferModel{
+		HeaderID:         headerID,
+		Name:             c.boundEvent.Name(),
+		BlockNumber:      blockNumber,
+		Src:              unpackedBurn.Burner.Hex(),
+		Dst:              "0x0",
+		Amount:           unpackedBurn.Value.String(),
+		Contract:         c.getEquivalent(log.Address),
+		LogIndex:         log.Index,
+		TransactionIndex: log.TxIndex,
+		Raw:              raw,
+	}, nil
 }
 
-func (c *valueTransferConverter) convertWipeBlacklistedAccounts(logs []types.Log, headerID, blockNumber int64) ([]models.ValueTransferModel, error) {
-	var records []models.ValueTransferModel
+func (c *valueTransferConverter) convertWipeBlacklistedAccount(log types.Log, headerID, blockNumber int64) (models.ValueTransferModel, error) {
 	var parsedABI abi.ABI
 	var err error
-	for _, log := range logs {
-		switch len(log.Topics) {
-		case 1:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.WipeBlacklistedAccount0Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 2:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.WipeBlacklistedAccount1Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 3:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.WipeBlacklistedAccount2Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 4:
-			return nil, errors.New("converter: `WipeBlacklistedAccount` event cannot have 4 topics")
-		}
-		boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
-		var unpackedWBAE shared.WipeBlacklistedAccountEntity
-		err := boundContract.UnpackLog(&unpackedWBAE, c.boundEvent.Name(), log)
+	switch len(log.Topics) {
+	case 1:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.WipeBlacklistedAccount0Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		raw, err := json.Marshal(log)
+	case 2:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.WipeBlacklistedAccount1Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		records = append(records, models.ValueTransferModel{
-			HeaderID:         headerID,
-			Name:             c.boundEvent.Name(),
-			BlockNumber:      blockNumber,
-			Src:              unpackedWBAE.Account.Hex(),
-			Dst:              "0x0",
-			Amount:           unpackedWBAE.Balance.String(),
-			Contract:         c.getEquivalent(log.Address),
-			LogIndex:         log.Index,
-			TransactionIndex: log.TxIndex,
-			Raw:              raw,
-		})
+	case 3:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.WipeBlacklistedAccount2Indexed.String()))
+		if err != nil {
+			return models.ValueTransferModel{}, err
+		}
+	case 4:
+		return models.ValueTransferModel{}, errors.New("converter: `WipeBlacklistedAccount` event cannot have 4 topics")
 	}
-	return records, nil
+	boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
+	var unpackedWBAE shared.WipeBlacklistedAccountEntity
+	err = boundContract.UnpackLog(&unpackedWBAE, c.boundEvent.Name(), log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	raw, err := json.Marshal(log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	return models.ValueTransferModel{
+		HeaderID:         headerID,
+		Name:             c.boundEvent.Name(),
+		BlockNumber:      blockNumber,
+		Src:              unpackedWBAE.Account.Hex(),
+		Dst:              "0x0",
+		Amount:           unpackedWBAE.Balance.String(),
+		Contract:         c.getEquivalent(log.Address),
+		LogIndex:         log.Index,
+		TransactionIndex: log.TxIndex,
+		Raw:              raw,
+	}, nil
 }
 
-func (c *valueTransferConverter) convertDestroyedBlackFunds(logs []types.Log, headerID, blockNumber int64) ([]models.ValueTransferModel, error) {
-	var records []models.ValueTransferModel
+func (c *valueTransferConverter) convertDestroyedBlackFund(log types.Log, headerID, blockNumber int64) (models.ValueTransferModel, error) {
 	var parsedABI abi.ABI
 	var err error
-	for _, log := range logs {
-		switch len(log.Topics) {
-		case 1:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.DestroyedBlackFunds0Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 2:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.DestroyedBlackFunds1Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 3:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.DestroyedBlackFunds2Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 4:
-			return nil, errors.New("converter: `DestroyedBlackFunds` event cannot have 4 topics")
-		}
-		boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
-		var unpackedDBF shared.DestroyedBlackFundsEntity
-		err := boundContract.UnpackLog(&unpackedDBF, c.boundEvent.Name(), log)
+	switch len(log.Topics) {
+	case 1:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.DestroyedBlackFunds0Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		raw, err := json.Marshal(log)
+	case 2:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.DestroyedBlackFunds1Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		records = append(records, models.ValueTransferModel{
-			HeaderID:         headerID,
-			Name:             c.boundEvent.Name(),
-			BlockNumber:      blockNumber,
-			Src:              unpackedDBF.BlackListedUser.Hex(),
-			Dst:              "0x0",
-			Amount:           unpackedDBF.Balance.String(),
-			Contract:         c.getEquivalent(log.Address),
-			LogIndex:         log.Index,
-			TransactionIndex: log.TxIndex,
-			Raw:              raw,
-		})
+	case 3:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.DestroyedBlackFunds2Indexed.String()))
+		if err != nil {
+			return models.ValueTransferModel{}, err
+		}
+	case 4:
+		return models.ValueTransferModel{}, errors.New("converter: `DestroyedBlackFunds` event cannot have 4 topics")
 	}
-	return records, nil
+	boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
+	var unpackedDBF shared.DestroyedBlackFundsEntity
+	err = boundContract.UnpackLog(&unpackedDBF, c.boundEvent.Name(), log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	raw, err := json.Marshal(log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	return models.ValueTransferModel{
+		HeaderID:         headerID,
+		Name:             c.boundEvent.Name(),
+		BlockNumber:      blockNumber,
+		Src:              unpackedDBF.BlackListedUser.Hex(),
+		Dst:              "0x0",
+		Amount:           unpackedDBF.Balance.String(),
+		Contract:         c.getEquivalent(log.Address),
+		LogIndex:         log.Index,
+		TransactionIndex: log.TxIndex,
+		Raw:              raw,
+	}, nil
 }
 
-func (c *valueTransferConverter) convertTransferFroms(logs []types.Log, headerID, blockNumber int64) ([]models.ValueTransferModel, error) {
-	var records []models.ValueTransferModel
+func (c *valueTransferConverter) convertTransferFrom(log types.Log, headerID, blockNumber int64) (models.ValueTransferModel, error) {
 	var parsedABI abi.ABI
 	var err error
-	for _, log := range logs {
-		switch len(log.Topics) {
-		case 1:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.TransferFrom0Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 2:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.TransferFrom1Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 3:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.TransferFrom2Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 4:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.TransferFrom3Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		}
-		boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
-		var unpackedTransferFrom shared.TransferFromEntity
-		err := boundContract.UnpackLog(&unpackedTransferFrom, c.boundEvent.Name(), log)
+	switch len(log.Topics) {
+	case 1:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.TransferFrom0Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		raw, err := json.Marshal(log)
+	case 2:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.TransferFrom1Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		records = append(records, models.ValueTransferModel{
-			HeaderID:         headerID,
-			Name:             c.boundEvent.Name(),
-			BlockNumber:      blockNumber,
-			Src:              unpackedTransferFrom.From.Hex(),
-			Dst:              unpackedTransferFrom.To.Hex(),
-			Amount:           unpackedTransferFrom.Value.String(),
-			Contract:         c.getEquivalent(log.Address),
-			LogIndex:         log.Index,
-			TransactionIndex: log.TxIndex,
-			Raw:              raw,
-		})
+	case 3:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.TransferFrom2Indexed.String()))
+		if err != nil {
+			return models.ValueTransferModel{}, err
+		}
+	case 4:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.TransferFrom3Indexed.String()))
+		if err != nil {
+			return models.ValueTransferModel{}, err
+		}
 	}
-	return records, nil
+	boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
+	var unpackedTransferFrom shared.TransferFromEntity
+	err = boundContract.UnpackLog(&unpackedTransferFrom, c.boundEvent.Name(), log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	raw, err := json.Marshal(log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	return models.ValueTransferModel{
+		HeaderID:         headerID,
+		Name:             c.boundEvent.Name(),
+		BlockNumber:      blockNumber,
+		Src:              unpackedTransferFrom.From.Hex(),
+		Dst:              unpackedTransferFrom.To.Hex(),
+		Amount:           unpackedTransferFrom.Value.String(),
+		Contract:         c.getEquivalent(log.Address),
+		LogIndex:         log.Index,
+		TransactionIndex: log.TxIndex,
+		Raw:              raw,
+	}, nil
 }
 
-func (c *valueTransferConverter) convertDeposits(logs []types.Log, headerID, blockNumber int64) ([]models.ValueTransferModel, error) {
-	var records []models.ValueTransferModel
+func (c *valueTransferConverter) convertDeposit(log types.Log, headerID, blockNumber int64) (models.ValueTransferModel, error) {
 	var parsedABI abi.ABI
 	var err error
-	for _, log := range logs {
-		switch len(log.Topics) {
-		case 1:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Deposit0Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 2:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Deposit1Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 3:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Deposit2Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 4:
-			return nil, errors.New("converter: `Deposit` event cannot have 4 topics")
-		}
-		boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
-		var unpackedDeposit shared.DepositEntity
-		err := boundContract.UnpackLog(&unpackedDeposit, c.boundEvent.Name(), log)
+	switch len(log.Topics) {
+	case 1:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Deposit0Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		raw, err := json.Marshal(log)
+	case 2:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Deposit1Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		records = append(records, models.ValueTransferModel{
-			HeaderID:         headerID,
-			Name:             c.boundEvent.Name(),
-			BlockNumber:      blockNumber,
-			Src:              "0x0",
-			Dst:              unpackedDeposit.Dst.Hex(),
-			Amount:           unpackedDeposit.Wad.String(),
-			Contract:         c.getEquivalent(log.Address),
-			LogIndex:         log.Index,
-			TransactionIndex: log.TxIndex,
-			Raw:              raw,
-		})
+	case 3:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Deposit2Indexed.String()))
+		if err != nil {
+			return models.ValueTransferModel{}, err
+		}
+	case 4:
+		return models.ValueTransferModel{}, errors.New("converter: `Deposit` event cannot have 4 topics")
 	}
-	return records, nil
+	boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
+	var unpackedDeposit shared.DepositEntity
+	err = boundContract.UnpackLog(&unpackedDeposit, c.boundEvent.Name(), log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	raw, err := json.Marshal(log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	return models.ValueTransferModel{
+		HeaderID:         headerID,
+		Name:             c.boundEvent.Name(),
+		BlockNumber:      blockNumber,
+		Src:              "0x0",
+		Dst:              unpackedDeposit.Dst.Hex(),
+		Amount:           unpackedDeposit.Wad.String(),
+		Contract:         c.getEquivalent(log.Address),
+		LogIndex:         log.Index,
+		TransactionIndex: log.TxIndex,
+		Raw:              raw,
+	}, nil
 }
 
-func (c *valueTransferConverter) convertWithdrawals(logs []types.Log, headerID, blockNumber int64) ([]models.ValueTransferModel, error) {
-	var records []models.ValueTransferModel
+func (c *valueTransferConverter) convertWithdrawal(log types.Log, headerID, blockNumber int64) (models.ValueTransferModel, error) {
 	var parsedABI abi.ABI
 	var err error
-	for _, log := range logs {
-		switch len(log.Topics) {
-		case 1:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Withdrawal0Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 2:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Withdrawal1Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 3:
-			parsedABI, err = abi.JSON(strings.NewReader(constants.Withdrawal2Indexed.String()))
-			if err != nil {
-				return nil, err
-			}
-		case 4:
-			return nil, errors.New("converter: `Withdrawal` event cannot have 4 topics")
-		}
-		boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
-		var unpackedDeposit shared.WithdrawalEntity
-		err := boundContract.UnpackLog(&unpackedDeposit, c.boundEvent.Name(), log)
+	switch len(log.Topics) {
+	case 1:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Withdrawal0Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		raw, err := json.Marshal(log)
+	case 2:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Withdrawal1Indexed.String()))
 		if err != nil {
-			return nil, err
+			return models.ValueTransferModel{}, err
 		}
-		records = append(records, models.ValueTransferModel{
-			HeaderID:         headerID,
-			Name:             c.boundEvent.Name(),
-			BlockNumber:      blockNumber,
-			Src:              unpackedDeposit.Src.Hex(),
-			Dst:              "0x0",
-			Amount:           unpackedDeposit.Wad.String(),
-			Contract:         c.getEquivalent(log.Address),
-			LogIndex:         log.Index,
-			TransactionIndex: log.TxIndex,
-			Raw:              raw,
-		})
+	case 3:
+		parsedABI, err = abi.JSON(strings.NewReader(constants.Withdrawal2Indexed.String()))
+		if err != nil {
+			return models.ValueTransferModel{}, err
+		}
+	case 4:
+		return models.ValueTransferModel{}, errors.New("converter: `Withdrawal` event cannot have 4 topics")
 	}
-	return records, nil
+	boundContract := bind.NewBoundContract(common.HexToAddress("0x0"), parsedABI, nil, nil, nil)
+	var unpackedDeposit shared.WithdrawalEntity
+	err = boundContract.UnpackLog(&unpackedDeposit, c.boundEvent.Name(), log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	raw, err := json.Marshal(log)
+	if err != nil {
+		return models.ValueTransferModel{}, err
+	}
+	return models.ValueTransferModel{
+		HeaderID:         headerID,
+		Name:             c.boundEvent.Name(),
+		BlockNumber:      blockNumber,
+		Src:              unpackedDeposit.Src.Hex(),
+		Dst:              "0x0",
+		Amount:           unpackedDeposit.Wad.String(),
+		Contract:         c.getEquivalent(log.Address),
+		LogIndex:         log.Index,
+		TransactionIndex: log.TxIndex,
+		Raw:              raw,
+	}, nil
 }
 
 func (c *valueTransferConverter) getEquivalent(addr common.Address) string {

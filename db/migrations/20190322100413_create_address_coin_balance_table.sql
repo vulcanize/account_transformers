@@ -6,7 +6,8 @@ CREATE TABLE accounts.address_coin_balances (
   value                       NUMERIC(100,0),
   value_fetched_at            TIMESTAMP WITHOUT TIME ZONE,
   inserted_at                 TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-  updated_at                  TIMESTAMP WITHOUT TIME ZONE NOT NULL
+  updated_at                  TIMESTAMP WITHOUT TIME ZONE,
+  UNIQUE (address_hash, block_number)
 );
 
 CREATE UNIQUE INDEX address_coin_balances_address_hash_block_number_index ON accounts.address_coin_balances (address_hash, block_number);

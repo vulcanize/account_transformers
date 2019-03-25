@@ -24,34 +24,34 @@ import (
 
 type AddressRepository interface {
 	GetAddresses() ([]common.Address, error)
-	AddAddress(addr string) error
+	AddAddress(addr common.Address) error
 }
 
 type addressRepository struct {
 	DB *postgres.DB
 }
 
-func NewAccountHeaderRepository(db *postgres.DB) *addressRepository {
+func NewAddressRepository(db *postgres.DB) *addressRepository {
 	return &addressRepository{
 		DB: db,
 	}
 }
 
 func (ar *addressRepository) GetAddresses() ([]common.Address, error) {
-	dest := new([][]byte)
+	dest := new([]string)
 	err := ar.DB.Select(dest, `SELECT * FROM accounts.addresses`)
 	if err != nil {
 		return nil, err
 	}
 	addresses := make([]common.Address, 0, len(*dest))
-	for _, addrBytes := range *dest {
-		addr := common.BytesToAddress(addrBytes)
+	for _, addrStr := range *dest {
+		addr := common.HexToAddress(addrStr)
 		addresses = append(addresses, addr)
 	}
 	return addresses, nil
 }
 
-func (ar *addressRepository) AddAddress(addr string) error {
-	_, err := ar.DB.Exec(`INSERT INTO accounts.addresses (address) VALUES ($1) ON CONFLICT (address) DO NOTHING`, addr)
+func (ar *addressRepository) AddAddress(addr common.Address) error {
+	_, err := ar.DB.Exec(`INSERT INTO accounts.addresses (address) VALUES ($1) ON CONFLICT (address) DO NOTHING`, addr.Hex())
 	return err
 }

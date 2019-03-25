@@ -24,7 +24,7 @@ type ValueTransferModel struct {
 	Src              string
 	Amount           string
 	Contract         string
-	LogIndex         uint `db:"log_idx"`
-	TransactionIndex uint `db:"tx_idx"`
-	Raw              []byte
+	LogIndex         uint   `db:"log_idx"`
+	TransactionIndex uint   `db:"tx_idx"`
+	Raw              []byte `db:"raw_log"`
 }

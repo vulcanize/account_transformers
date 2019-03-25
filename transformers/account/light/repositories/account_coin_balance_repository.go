@@ -19,10 +19,7 @@ package repositories
 import (
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/vulcanize/vulcanizedb/libraries/shared/utilities"
-	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 
 	"github.com/vulcanize/account_transformers/transformers/account/shared"
@@ -51,23 +48,15 @@ func (acbr *accountCoinBalanceRepository) CreateCoinBalanceRecord(balanceRecords
 			(address_hash,
 			block_number,
 			value,
-			value_fetched_at,
-			inserted_at,
-			updated_at) VALUES
-			($1, $2, $3, $4, $5, $6)
+			inserted_at) VALUES
+			($1, $2, $3, $4)
 			ON CONFLICT (address_hash, block_number)
 			DO UPDATE SET
 			(value,
-			value_fetched_at,
-			updated_at) = ($3, $4, $6)`
+			updated_at) = ($3, $4)`
 	for _, record := range balanceRecords {
 		now := time.Now()
-		_, err := tx.Exec(pgStr, record.Address, record.BlockNumber, utilities.NullToZero(record.Value), now, now, now)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		err = repository.MarkHeaderCheckedInTransaction(headerID, tx, "account_"+common.BytesToAddress(record.Address).Hex())
+		_, err := tx.Exec(pgStr, record.Address, record.BlockNumber, utilities.NullToZero(record.Value), now)
 		if err != nil {
 			tx.Rollback()
 			return err

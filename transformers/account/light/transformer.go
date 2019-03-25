@@ -18,16 +18,18 @@ package light
 
 import (
 	"errors"
-	"github.com/vulcanize/account_transformers/transformers/account/light/converters"
-	"github.com/vulcanize/account_transformers/transformers/account/light/repositories"
-	"github.com/vulcanize/account_transformers/transformers/account/shared/constants"
-	"github.com/vulcanize/account_transformers/transformers/account/shared/poller"
+
 	"github.com/vulcanize/vulcanizedb/libraries/shared/transformer"
 	"github.com/vulcanize/vulcanizedb/pkg/config"
 	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/fetcher"
 	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/core"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
+
+	"github.com/vulcanize/account_transformers/transformers/account/light/converters"
+	"github.com/vulcanize/account_transformers/transformers/account/light/repositories"
+	"github.com/vulcanize/account_transformers/transformers/account/shared/constants"
+	"github.com/vulcanize/account_transformers/transformers/account/shared/poller"
 )
 
 type TokenBalanceTransformer struct {
@@ -50,7 +52,7 @@ func (tbt TokenBalanceTransformer) NewTransformer(db *postgres.DB, blockChain co
 		TokenBalanceConverter:        converters.NewTokenBalanceConverter(),
 		Fetcher:                      fetcher.NewFetcher(blockChain),
 		HeaderRepository:             repository.NewHeaderRepository(db),
-		AddressRepository:            repositories.NewAccountHeaderRepository(db),
+		AddressRepository:            repositories.NewAddressRepository(db),
 		ValueTransferEventRepository: repositories.NewValueTransferEventRepository(db),
 		CoinBalanceRepository:        repositories.NewAccountCoinBalanceRepository(db),
 		TokenBalanceRepository:       repositories.NewAccountTokenBalanceRepository(db),
@@ -62,7 +64,7 @@ func (tbt TokenBalanceTransformer) NewTransformer(db *postgres.DB, blockChain co
 func (tbt *TokenBalanceTransformer) Init() error {
 	configuredAccountAddress := constants.AccountAddresses()
 	for _, addr := range configuredAccountAddress {
-		tbt.AddressRepository.AddAddress(addr.Hex())
+		tbt.AddressRepository.AddAddress(addr)
 	}
 	return tbt.HeaderRepository.AddCheckColumn("token_value_transfers")
 }
@@ -108,40 +110,46 @@ func (tbt *TokenBalanceTransformer) Execute() error {
 		return errors.New("no addresses to create records for")
 	}
 
-	addressIds := make([]string, 0, len(addresses))
-	for _, addr := range addresses {
-		addressIds = append(addressIds, "account_"+addr.Hex())
-	}
-	// Add these ids to the checked_header table
-	err = tbt.HeaderRepository.AddCheckColumns(addressIds)
-	if err != nil {
-		return err
-	}
 	// Now we need to go through and process the value transfer records into token balance records for our users
-	checkedButNotRecordedHeaders, err := tbt.HeaderRepository.MissingMethodsCheckedEventsIntersection(0, -1, addressIds, []string{"token_value_transfers"})
-	if err != nil {
-		return err
+	for _, addr := range addresses {
+		columnID := "account_" + addr.Hex()
+		err = tbt.HeaderRepository.AddCheckColumn(columnID)
+		if err != nil {
+			return err
+		}
+		// Retrieve headers which need records for this user
+		checkedButNotRecordedHeaders, err := tbt.HeaderRepository.MissingMethodsCheckedEventsIntersection(0, -1, []string{columnID}, []string{"token_value_transfers"})
+		if err != nil {
+			return err
+		}
+		for _, header := range checkedButNotRecordedHeaders {
+			mappedValueTransferRecords, err := tbt.ValueTransferEventRepository.GetTokenValueTransferRecordsForAccounts(addresses, header.BlockNumber)
+			if err != nil {
+				return err
+			}
+			tokenBalanceRecords := tbt.TokenBalanceConverter.Convert(mappedValueTransferRecords, header.BlockNumber)
+			err = tbt.TokenBalanceRepository.CreateTokenBalanceRecords(tokenBalanceRecords, header.Id)
+			if err != nil {
+				return err
+			}
+			// Let's also poll the eth balance at this header's blockNumber and create eth balance records
+			coinBalanceRecords, err := tbt.AccountPoller.PollAccounts(addresses, header.BlockNumber)
+			if err != nil {
+				return err
+			}
+			// And commit these records to Postgres
+			err = tbt.CoinBalanceRepository.CreateCoinBalanceRecord(coinBalanceRecords, header.Id)
+			if err != nil {
+				return err
+			}
+			// Mark this header checked for this account
+			err = tbt.HeaderRepository.MarkHeaderChecked(header.Id, columnID)
+			if err != nil {
+				return err
+			}
+		}
 	}
-	for _, header := range checkedButNotRecordedHeaders {
-		mappedValueTransferRecords, err := tbt.ValueTransferEventRepository.GetTokenValueTransferRecordsForAccounts(addresses, header.BlockNumber)
-		if err != nil {
-			return err
-		}
-		tokenBalanceRecords := tbt.TokenBalanceConverter.Convert(mappedValueTransferRecords, header.Id)
-		err = tbt.TokenBalanceRepository.CreateTokenBalanceRecords(tokenBalanceRecords, header.Id)
-		if err != nil {
-			return err
-		}
-		// Let's also poll the eth balance at this header's blockNumber and create eth balance records
-		coinBalanceRecords, err := tbt.AccountPoller.PollAccounts(addresses, header.BlockNumber)
-		if err != nil {
-			return err
-		}
-		err = tbt.CoinBalanceRepository.CreateCoinBalanceRecord(coinBalanceRecords, header.Id)
-		if err != nil {
-			return err
-		}
-	}
+
 	return nil
 }
 

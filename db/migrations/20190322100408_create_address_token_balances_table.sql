@@ -7,7 +7,8 @@ CREATE TABLE accounts.address_token_balances (
   value                       NUMERIC,
   value_fetched_at            TIMESTAMP WITHOUT TIME ZONE,
   inserted_at                 TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-  updated_at                  TIMESTAMP WITHOUT TIME ZONE NOT NULL
+  updated_at                  TIMESTAMP WITHOUT TIME ZONE,
+  UNIQUE (address_hash, block_number, token_contract_address_hash)
 );
 
 CREATE UNIQUE INDEX address_token_balances_address_hash_token_contract_address_hash ON accounts.address_token_balances (address_hash, token_contract_address_hash, block_number);

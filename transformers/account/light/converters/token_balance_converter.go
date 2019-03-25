@@ -50,11 +50,11 @@ func (c *tokenBalanceConverter) Convert(mappedTransferRecords map[common.Address
 			for _, record := range records {
 				amount := new(big.Int)
 				if record.Dst == addr.Hex() {
-					amount.SetString(utilities.NullToZero(record.Dst), 10)
+					amount.SetString(utilities.NullToZero(record.Amount), 10)
 					value = value.Add(value, amount)
 				}
 				if record.Src == addr.Hex() {
-					amount.SetString(utilities.NullToZero(record.Src), 10)
+					amount.SetString(utilities.NullToZero(record.Amount), 10)
 					value = value.Sub(value, amount)
 				}
 			}
