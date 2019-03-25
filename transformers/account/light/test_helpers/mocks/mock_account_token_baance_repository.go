@@ -14,25 +14,20 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package integration_tests_test
+package mocks
 
 import (
-	"github.com/spf13/viper"
-	"io/ioutil"
-	"testing"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	log "github.com/sirupsen/logrus"
+	"github.com/vulcanize/account_transformers/transformers/account/shared"
 )
 
-func TestIntegration(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Integration Suite Test")
+type MockAccountTokenBalanceRepository struct {
+	PassedRecords                []shared.TokenBalanceRecord
+	PassedHeaderID               int64
+	CreateTokenBalanceRecordsErr error
 }
 
-var _ = BeforeSuite(func() {
-	viper.SetConfigName("integration")
-	viper.AddConfigPath("$GOPATH/src/github.com/vulcanize/account_transformers/environments/")
-	log.SetOutput(ioutil.Discard)
-})
+func (atbr *MockAccountTokenBalanceRepository) CreateTokenBalanceRecords(records []shared.TokenBalanceRecord, headerID int64) error {
+	atbr.PassedHeaderID = headerID
+	atbr.PassedRecords = records
+	return atbr.CreateTokenBalanceRecordsErr
+}
