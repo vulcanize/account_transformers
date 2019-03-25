@@ -19,10 +19,7 @@ package repositories
 import (
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/vulcanize/vulcanizedb/libraries/shared/utilities"
-	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 
 	"github.com/vulcanize/account_transformers/transformers/account/shared"
@@ -52,23 +49,15 @@ func (atbr *accountTokenBalanceRepository) CreateTokenBalanceRecords(records []s
 			block_number,
 			token_contract_address_hash,
 			value,
-			value_fetched_at,
-			inserted_at,
-			updated_at) VALUES
-			($1, $2, $3, $4, $5, $6, $7)
+			inserted_at) VALUES
+			($1, $2, $3, $4, $5)
 			ON CONFLICT (address_hash, block_number, token_contract_address_hash)
 			DO UPDATE SET
 			(value,
-			value_fetched_at,
-			updated_at) = ($4, $5, $7)`
+			updated_at) = ($4, $5)`
 	for _, record := range records {
 		now := time.Now()
-		_, err := tx.Exec(pgStr, record.Address, record.BlockNumber, record.ContractAddress, utilities.NullToZero(record.Value), now, now, now)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		err = repository.MarkHeaderCheckedInTransaction(headerID, tx, common.BytesToAddress(record.Address).Hex())
+		_, err := tx.Exec(pgStr, record.Address, record.BlockNumber, record.ContractAddress, utilities.NullToZero(record.Value), now)
 		if err != nil {
 			tx.Rollback()
 			return err
