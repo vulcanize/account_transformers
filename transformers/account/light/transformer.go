@@ -86,7 +86,7 @@ func (tbt *TokenBalanceTransformer) Execute() error {
 			if err != nil {
 				return err
 			}
-			tbt.NextStart = header.BlockNumber + 1
+			tbt.NextStart++
 			continue
 		}
 		models, err := tbt.ValueTransferConverter.Convert(allLogs, header.Id, header.BlockNumber)
@@ -98,7 +98,7 @@ func (tbt *TokenBalanceTransformer) Execute() error {
 		if err != nil {
 			return err
 		}
-		tbt.NextStart = header.BlockNumber + 1
+		tbt.NextStart++
 	}
 
 	// Get the addresses we want to create eth and token balance records for

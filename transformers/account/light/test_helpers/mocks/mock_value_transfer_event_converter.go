@@ -14,25 +14,25 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package light_test
+package mocks
 
 import (
-	"github.com/spf13/viper"
-	"io/ioutil"
-	"testing"
+	"github.com/ethereum/go-ethereum/core/types"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	log "github.com/sirupsen/logrus"
+	"github.com/vulcanize/account_transformers/transformers/account/light/models"
 )
 
-func TestLightAccountTransformer(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Light Suite Test")
+type MockValueTransferConverter struct {
+	PassedEthLogs     []types.Log
+	PassedHeaderID    int64
+	PassedBlockNumber int64
+	ConvertedModels   []models.ValueTransferModel
+	ConvertErr        error
 }
 
-var _ = BeforeSuite(func() {
-	viper.SetConfigName("integration")
-	viper.AddConfigPath("$GOPATH/src/github.com/vulcanize/account_transformers/environments/")
-	log.SetOutput(ioutil.Discard)
-})
+func (c *MockValueTransferConverter) Convert(ethLogs []types.Log, headerID, blockNumber int64) ([]models.ValueTransferModel, error) {
+	c.PassedBlockNumber = blockNumber
+	c.PassedHeaderID = headerID
+	c.PassedEthLogs = ethLogs
+	return c.ConvertedModels, c.ConvertErr
+}

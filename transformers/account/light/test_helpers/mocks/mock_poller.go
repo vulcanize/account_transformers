@@ -14,25 +14,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package integration_tests_test
+package mocks
 
 import (
-	"github.com/spf13/viper"
-	"io/ioutil"
-	"testing"
+	"github.com/ethereum/go-ethereum/common"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	log "github.com/sirupsen/logrus"
+	"github.com/vulcanize/account_transformers/transformers/account/shared"
 )
 
-func TestIntegration(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Integration Suite Test")
+type MockAccountPoller struct {
+	PassedAccounts     []common.Address
+	PassedBlockNumber  int64
+	CoinBalanceRecords []shared.CoinBalanceRecord
+	PollAccountsError  error
 }
 
-var _ = BeforeSuite(func() {
-	viper.SetConfigName("integration")
-	viper.AddConfigPath("$GOPATH/src/github.com/vulcanize/account_transformers/environments/")
-	log.SetOutput(ioutil.Discard)
-})
+func (ap *MockAccountPoller) PollAccounts(accounts []common.Address, blockNumber int64) ([]shared.CoinBalanceRecord, error) {
+	ap.PassedBlockNumber = blockNumber
+	ap.PassedAccounts = accounts
+	return ap.CoinBalanceRecords, ap.PollAccountsError
+}
