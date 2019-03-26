@@ -19,7 +19,7 @@ package models
 type ValueTransferModel struct {
 	HeaderID         int64 `db:"header_id"`
 	Name             string
-	BlockNumber      int64 `db:"block_number"`
+	BlockNumber      uint64 `db:"block_number"`
 	Dst              string
 	Src              string
 	Amount           string

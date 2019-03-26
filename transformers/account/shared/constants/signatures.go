@@ -18,7 +18,7 @@ package constants
 
 import "github.com/ethereum/go-ethereum/common"
 
-var EventSignatures = map[string]Label{
+var eventSignatures = map[string]Label{
 	"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef": Transfer,
 	"0x930a61a57a70a73c2a503615b87e2e54fe5b9cdeacda518270b852296ab1a377": Transfer,
 	"0x0f6798a560793a54c3bcfe86a93cde1e73087d944c0ea20544137d4121396885": Mint,
@@ -41,6 +41,16 @@ var EventSignatures = map[string]Label{
 	"0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c": Deposit,
 	"0x1be94c6778a9e1751832385a51994fbb7b20c9c08ebfa22735a951d4b84ebb1e": Withdrawal,
 	"0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65": Withdrawal,
+	"0x06b541ddaa720db2b10a4d0cdac39b8d360425fc073085fac19bc82614677987": Sent,
+	"0x508ca8d3308822f04cf682f4bac548a7de69fc6954e01258a2dc6d502f1e5e5a": Sent,
+	"0x2fe5be0146f74c5bce36c0b80911af6c7d86ff27e89d5cfa61fc681327954e5d": Minted,
+	"0x3aa4a6cc0d5ab5394ea4f839cf461a37a5afd436ab69ed9a54dd3253c7b81d95": Minted,
+	"0xa78a9be3a7b862d26933ad85fb11d80ef66b8f972d7cbba06621d583943a4098": Burned,
+	"0x0d31e6d5f63c75ca22bedbcb23cb447651d38fb050ff66bde15d27ebdc90e5c6": Burned,
+	"0xe19260aff97b920c7df27010903aeb9c8d2be5d310a2c67824cf3f15396e4c16": TransferWithData,
+	"0x7cb74cd01a697bfd8e59936d9ff98bd88ee6795ae83c4de40900ecd767af76ca": TransferWithData,
+	"0x9e12d725ade130ef3f3727e13815b3fcf01a631419ce8142bafb0752a61121e8": NewTokenGrant,
+	"0x3a54236f3fa142aa8af68c2520b5280d6ad1c3b751f857990552c0f9ef326f37": NewTokenGrant,
 }
 
 var Topic0s = []common.Hash{
@@ -66,13 +76,33 @@ var Topic0s = []common.Hash{
 	common.HexToHash("0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c"), // Deposit
 	common.HexToHash("0x1be94c6778a9e1751832385a51994fbb7b20c9c08ebfa22735a951d4b84ebb1e"), // Withdrawal
 	common.HexToHash("0x7fcf532c15f0a6db0bd6d0e038bea71d30d808c7d98cb3bf7268a95bf5081b65"), // Withdrawal
+	common.HexToHash("0x06b541ddaa720db2b10a4d0cdac39b8d360425fc073085fac19bc82614677987"), // Sent
+	common.HexToHash("0x508ca8d3308822f04cf682f4bac548a7de69fc6954e01258a2dc6d502f1e5e5a"), // Sent
+	common.HexToHash("0x2fe5be0146f74c5bce36c0b80911af6c7d86ff27e89d5cfa61fc681327954e5d"), // Minted
+	common.HexToHash("0x3aa4a6cc0d5ab5394ea4f839cf461a37a5afd436ab69ed9a54dd3253c7b81d95"), // Minted
+	common.HexToHash("0xa78a9be3a7b862d26933ad85fb11d80ef66b8f972d7cbba06621d583943a4098"), // Burned
+	common.HexToHash("0x0d31e6d5f63c75ca22bedbcb23cb447651d38fb050ff66bde15d27ebdc90e5c6"), // Burned
+	common.HexToHash("0xe19260aff97b920c7df27010903aeb9c8d2be5d310a2c67824cf3f15396e4c16"), // TransferWithData
+	common.HexToHash("0x7cb74cd01a697bfd8e59936d9ff98bd88ee6795ae83c4de40900ecd767af76ca"), // TransferWithData
+	common.HexToHash("0x9e12d725ade130ef3f3727e13815b3fcf01a631419ce8142bafb0752a61121e8"), // NewTokenGrant
+	common.HexToHash("0x3a54236f3fa142aa8af68c2520b5280d6ad1c3b751f857990552c0f9ef326f37"), // NewTokenGrant
 }
 
 func NewLabelFromSignature(sig string) Label {
-	for signature, label := range EventSignatures {
+	for signature, label := range eventSignatures {
 		if sig == signature {
 			return label
 		}
 	}
 	return ""
+}
+
+func (label Label) Sigs() []common.Hash {
+	var sigs []common.Hash
+	for signature, l := range eventSignatures {
+		if label == l {
+			sigs = append(sigs, common.HexToHash(signature))
+		}
+	}
+	return sigs
 }
