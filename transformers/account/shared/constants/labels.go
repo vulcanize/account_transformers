@@ -30,6 +30,11 @@ const (
 	TransferFrom           Label = "TransferFrom"
 	Deposit                Label = "Deposit"
 	Withdrawal             Label = "Withdrawal"
+	Sent                   Label = "Sent"
+	Minted                 Label = "Minted"
+	Burned                 Label = "Burned"
+	TransferWithData       Label = "TransferWithData"
+	NewTokenGrant          Label = "NewTokenGrant"
 )
 
 var labels = map[string]Label{
@@ -44,6 +49,11 @@ var labels = map[string]Label{
 	"TransferFrom":           TransferFrom,
 	"Deposit":                Deposit,
 	"Withdrawal":             Withdrawal,
+	"Sent":                   Sent,
+	"Minted":                 Minted,
+	"Burned":                 Burned,
+	"TransferWithData":       TransferWithData,
+	"NewTokenGrant":          NewTokenGrant,
 }
 
 func NewLabel(name string) Label {

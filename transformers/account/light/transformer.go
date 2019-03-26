@@ -18,6 +18,8 @@ package light
 
 import (
 	"errors"
+	"fmt"
+	"github.com/sirupsen/logrus"
 
 	"github.com/vulcanize/vulcanizedb/libraries/shared/transformer"
 	"github.com/vulcanize/vulcanizedb/pkg/config"
@@ -47,8 +49,12 @@ type TokenBalanceTransformer struct {
 }
 
 func (tbt TokenBalanceTransformer) NewTransformer(db *postgres.DB, blockChain core.BlockChain) transformer.ContractTransformer {
+	vtc, err := converters.NewValueTransferConverter(constants.CombinedABI, constants.EquivalentTokenAddressesMapping())
+	if err != nil {
+		logrus.Fatal(fmt.Sprintf("invalid abi\r\n%s\r\n", constants.CombinedABI), err)
+	}
 	return &TokenBalanceTransformer{
-		ValueTransferConverter:       converters.NewValueTransferConverter(constants.EquivalentTokenAddressesMapping()),
+		ValueTransferConverter:       vtc,
 		TokenBalanceConverter:        converters.NewTokenBalanceConverter(),
 		Fetcher:                      fetcher.NewFetcher(blockChain),
 		HeaderRepository:             repository.NewHeaderRepository(db),
@@ -89,7 +95,7 @@ func (tbt *TokenBalanceTransformer) Execute() error {
 			tbt.NextStart++
 			continue
 		}
-		models, err := tbt.ValueTransferConverter.Convert(allLogs, header.Id, header.BlockNumber)
+		models, err := tbt.ValueTransferConverter.Convert(allLogs, header.Id)
 		if err != nil {
 			return err
 		}
