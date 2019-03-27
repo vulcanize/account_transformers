@@ -20,12 +20,14 @@
         migrations = "db/migrations"
         rank = "0"
 
-[equivalents]
-    0x0000000000085d4780B73119b644AE5ecd22b376 = [
-       "0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E"
-    ]
+[token]
+    [token.equivalents]
+        0x0000000000085d4780B73119b644AE5ecd22b376 = [
+           "0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E"
+        ]
 
 [account]
+    start = 6791667
     addresses = [
         "0x48E78948C80e9f8F53190DbDF2990f9a69491ef4",
         "0x009C1E8674038605C5AE33C74f13bC528E1222B5"

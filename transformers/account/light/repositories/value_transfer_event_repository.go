@@ -19,7 +19,6 @@ package repositories
 import (
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 
 	"github.com/vulcanize/account_transformers/transformers/account/light/models"
@@ -28,7 +27,7 @@ import (
 
 type ValueTransferEventRepository interface {
 	CreateTokenValueTransferRecords(models []models.ValueTransferModel) error
-	GetTokenValueTransferRecordsForAccount(address common.Address, lastBlock int64) ([]models.ValueTransferModel, error)
+	GetTokenValueTransferRecordsForAccount(address common.Address, firstBlock, lastBlock int64) ([]models.ValueTransferModel, error)
 	GetTokenValueTransferRecordsForAccounts(addresses []common.Address, lastBlock int64) (map[common.Address][]models.ValueTransferModel, error)
 }
 
@@ -73,20 +72,15 @@ func (br *valueTransferEventRepository) CreateTokenValueTransferRecords(records 
 			tx.Rollback()
 			return err
 		}
-		err = repository.MarkHeaderCheckedInTransaction(record.HeaderID, tx, "token_value_transfers")
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
 	}
 	return tx.Commit()
 }
 
-func (br *valueTransferEventRepository) GetTokenValueTransferRecordsForAccount(address common.Address, lastBlock int64) ([]models.ValueTransferModel, error) {
+func (br *valueTransferEventRepository) GetTokenValueTransferRecordsForAccount(address common.Address, firstBlock, lastBlock int64) ([]models.ValueTransferModel, error) {
 	var records []models.ValueTransferModel
 	pgStr := `SELECT header_id, name, block_number, dst, src, amount, contract, log_idx, tx_idx, raw_log FROM accounts.token_value_transfers
-			WHERE (dst = $1 OR src = $1) AND block_number <= $2`
-	rows, err := br.DB.Queryx(pgStr, address.Hex(), lastBlock)
+			WHERE (dst = $1 OR src = $1) AND block_number BETWEEN $2 AND $3`
+	rows, err := br.DB.Queryx(pgStr, address.Hex(), firstBlock, lastBlock)
 	if err != nil {
 		return nil, err
 	}

@@ -26,7 +26,7 @@ var FakeLogs = []types.Log{
 		Address:     common.HexToAddress("0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E"), // The old TrueUSD
 		BlockNumber: 6791667,
 		BlockHash:   common.HexToHash("0xMockBlockHash01"),
-		TxHash:      common.HexToHash("0xMockTxHash01"),
+		TxHash:      common.HexToHash("0xb3e3d6d098c5f8fc4f2f45d650943f18f8fff5367d6991a67dea2aafe8811e93"),
 		TxIndex:     1,
 		Index:       1,
 		Removed:     false,
@@ -40,7 +40,7 @@ var FakeLogs = []types.Log{
 		Address:     common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376"), // The new one
 		BlockNumber: 6791668,
 		BlockHash:   common.HexToHash("0xMockBlockHash02"),
-		TxHash:      common.HexToHash("0xMockTxHash02"),
+		TxHash:      common.HexToHash("0x98634183774924055c36f18babbb895834dce31a9cb4d2397b639078ffd3605f"),
 		TxIndex:     1,
 		Index:       1,
 		Removed:     false,
@@ -55,7 +55,7 @@ var FakeLogs = []types.Log{
 		Address:     common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376"),
 		BlockNumber: 6791669,
 		BlockHash:   common.HexToHash("0xMockBlockHash03"),
-		TxHash:      common.HexToHash("0xMockTxHash03"),
+		TxHash:      common.HexToHash("0x0f6798a560793a54c3bcfe86a93cde1e73087d944c0ea20544137d4121396885"),
 		TxIndex:     1,
 		Index:       1,
 		Removed:     false,

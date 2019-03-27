@@ -17,22 +17,25 @@
 package integration_tests
 
 import (
+	"strings"
+
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/vulcanize/account_transformers/transformers/account/config"
+	"github.com/vulcanize/account_transformers/transformers/account/light/test_helpers/fakes"
+	"github.com/vulcanize/account_transformers/transformers/account/light/test_helpers/mocks"
+	"github.com/vulcanize/account_transformers/transformers/account/shared"
+
 	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/fetcher"
 	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/core"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres/repositories"
 
-	"github.com/vulcanize/account_transformers/transformers/account/config"
 	transformer "github.com/vulcanize/account_transformers/transformers/account/light"
 	"github.com/vulcanize/account_transformers/transformers/account/light/converters"
 	r2 "github.com/vulcanize/account_transformers/transformers/account/light/repositories"
-	"github.com/vulcanize/account_transformers/transformers/account/light/test_helpers/fakes"
-	"github.com/vulcanize/account_transformers/transformers/account/light/test_helpers/mocks"
-	"github.com/vulcanize/account_transformers/transformers/account/shared"
 	c2 "github.com/vulcanize/account_transformers/transformers/account/shared/constants"
 	"github.com/vulcanize/account_transformers/transformers/account/shared/poller"
 	"github.com/vulcanize/account_transformers/transformers/account/shared/test_helpers"
@@ -67,7 +70,7 @@ var _ = Describe("Transformer", func() {
 	})
 
 	Describe("Execute", func() {
-		BeforeEach(func() { // 6885692 to 6885694
+		BeforeEach(func() {
 			header, err := blockChain.GetHeaderByNumber(6791667)
 			Expect(err).ToNot(HaveOccurred())
 			headerID, err = headerRepository.CreateOrUpdateHeader(header)
@@ -93,12 +96,11 @@ var _ = Describe("Transformer", func() {
 				ValueTransferEventRepository: r2.NewValueTransferEventRepository(db),
 				CoinBalanceRepository:        r2.NewAccountCoinBalanceRepository(db),
 				TokenBalanceRepository:       r2.NewAccountTokenBalanceRepository(db),
-				AccountPoller:                poller.NewAccountPoller(blockChain),
+				AccountPoller:                poller.NewAccountPoller(db, blockChain),
 			}
 			f := mocks.MockFetcher{}
 			f.Logs = fakes.FakeLogs
 			t.Fetcher = &f
-			t.NextStart = 6791667
 			err = t.Init()
 			Expect(err).ToNot(HaveOccurred())
 			err = t.Execute()
@@ -251,6 +253,21 @@ var _ = Describe("Transformer", func() {
 			Expect(tokenRecord.BlockNumber).To(Equal(int64(6791669)))
 			Expect(tokenRecord.Value).To(Equal("0"))
 			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+
+			trx := new(core.TransactionModel)
+			err = db.Get(trx, `SELECT hash, gaslimit, gasprice, nonce, tx_to, tx_from, value 
+											FROM public.light_sync_transactions 
+											WHERE header_id = $1 AND (tx_from = $2 OR tx_to = $2)`,
+				headerID2,
+				strings.ToLower(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Hex()))
+			Expect(err).ToNot(HaveOccurred())
+
+			err = db.Get(trx, `SELECT hash, gaslimit, gasprice, nonce, tx_to, tx_from, value 
+											FROM public.light_sync_transactions 
+											WHERE header_id = $1 AND (tx_from = $2 OR tx_to = $2)`,
+				headerID2,
+				strings.ToLower(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Hex()))
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("If `next start` isn't contiguous with the headers we have available, we can't do anything", func() {
@@ -265,7 +282,7 @@ var _ = Describe("Transformer", func() {
 				ValueTransferEventRepository: r2.NewValueTransferEventRepository(db),
 				CoinBalanceRepository:        r2.NewAccountCoinBalanceRepository(db),
 				TokenBalanceRepository:       r2.NewAccountTokenBalanceRepository(db),
-				AccountPoller:                poller.NewAccountPoller(blockChain),
+				AccountPoller:                poller.NewAccountPoller(db, blockChain),
 			}
 			err = t.Init()
 			Expect(err).ToNot(HaveOccurred())
@@ -285,14 +302,46 @@ var _ = Describe("Transformer", func() {
 				ValueTransferEventRepository: r2.NewValueTransferEventRepository(db),
 				CoinBalanceRepository:        r2.NewAccountCoinBalanceRepository(db),
 				TokenBalanceRepository:       r2.NewAccountTokenBalanceRepository(db),
-				AccountPoller:                poller.NewAccountPoller(blockChain),
+				AccountPoller:                poller.NewAccountPoller(db, blockChain),
 			}
-			t.NextStart = 6791668
 			err = t.Init()
 			Expect(err).ToNot(HaveOccurred())
 			err = t.Execute()
 			Expect(err).ToNot(HaveOccurred())
 		})
+	})
 
+	Describe("Execute- live data", func() {
+		BeforeEach(func() {
+			for i := 7450874; i <= 7450876; i++ {
+				header, err := blockChain.GetHeaderByNumber(int64(i))
+				Expect(err).ToNot(HaveOccurred())
+				_, err = headerRepository.CreateOrUpdateHeader(header)
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
+
+		It("With real fetcher: transforms value transfer events into account records", func() {
+			vtc, err := converters.NewValueTransferConverter(c2.CombinedABI, c2.EquivalentTokenAddressesMapping())
+			Expect(err).ToNot(HaveOccurred())
+			t := transformer.TokenBalanceTransformer{
+				ValueTransferConverter:       vtc,
+				TokenBalanceConverter:        converters.NewTokenBalanceConverter(),
+				HeaderRepository:             repository.NewHeaderRepository(db),
+				Fetcher:                      fetcher.NewFetcher(blockChain),
+				AddressRepository:            r2.NewAddressRepository(db),
+				ValueTransferEventRepository: r2.NewValueTransferEventRepository(db),
+				CoinBalanceRepository:        r2.NewAccountCoinBalanceRepository(db),
+				TokenBalanceRepository:       r2.NewAccountTokenBalanceRepository(db),
+				AccountPoller:                poller.NewAccountPoller(db, blockChain),
+			}
+			t.AddressRepository.AddAddress(common.HexToAddress("0x0a2311594059B468c9897338b027C8782398b481"))
+			t.AddressRepository.AddAddress(common.HexToAddress("0x7d03D189843df859abDDc7533B31cD8f6CeB2CeD"))
+			err = t.Init()
+			t.NextStart = 7450874
+			Expect(err).ToNot(HaveOccurred())
+			err = t.Execute()
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 })

@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
-
 	"github.com/vulcanize/vulcanizedb/libraries/shared/transformer"
 	"github.com/vulcanize/vulcanizedb/pkg/config"
 	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/fetcher"
@@ -62,8 +61,7 @@ func (tbt TokenBalanceTransformer) NewTransformer(db *postgres.DB, blockChain co
 		ValueTransferEventRepository: repositories.NewValueTransferEventRepository(db),
 		CoinBalanceRepository:        repositories.NewAccountCoinBalanceRepository(db),
 		TokenBalanceRepository:       repositories.NewAccountTokenBalanceRepository(db),
-		AccountPoller:                poller.NewAccountPoller(blockChain),
-		NextStart:                    constants.StartingBlock(),
+		AccountPoller:                poller.NewAccountPoller(db, blockChain),
 	}
 }
 
@@ -72,6 +70,7 @@ func (tbt *TokenBalanceTransformer) Init() error {
 	for _, addr := range configuredAccountAddress {
 		tbt.AddressRepository.AddAddress(addr)
 	}
+	tbt.NextStart = constants.StartingBlock()
 	return tbt.HeaderRepository.AddCheckColumn("token_value_transfers")
 }
 
@@ -99,8 +98,11 @@ func (tbt *TokenBalanceTransformer) Execute() error {
 		if err != nil {
 			return err
 		}
-		// Headers checked in transaction
 		err = tbt.ValueTransferEventRepository.CreateTokenValueTransferRecords(models)
+		if err != nil {
+			return err
+		}
+		err = tbt.HeaderRepository.MarkHeaderChecked(header.Id, "token_value_transfers")
 		if err != nil {
 			return err
 		}
@@ -128,8 +130,12 @@ func (tbt *TokenBalanceTransformer) Execute() error {
 		if err != nil {
 			return err
 		}
+		if len(checkedButNotRecordedHeaders) < 1 {
+			continue
+		}
+		//mostRecentRecordsBlock := checkedButNotRecordedHeaders[0].BlockNumber - 1
 		for _, header := range checkedButNotRecordedHeaders {
-			transferRecords, err := tbt.ValueTransferEventRepository.GetTokenValueTransferRecordsForAccount(addr, header.BlockNumber)
+			transferRecords, err := tbt.ValueTransferEventRepository.GetTokenValueTransferRecordsForAccount(addr, 0, header.BlockNumber)
 			if err != nil {
 				return err
 			}
@@ -139,7 +145,7 @@ func (tbt *TokenBalanceTransformer) Execute() error {
 				return err
 			}
 			// Let's also poll the eth balance at this header's blockNumber and create eth balance records
-			coinBalanceRecords, err := tbt.AccountPoller.PollAccounts(addresses, header.BlockNumber)
+			coinBalanceRecords, err := tbt.AccountPoller.PollAccounts(addresses, header.BlockNumber, header.Id)
 			if err != nil {
 				return err
 			}

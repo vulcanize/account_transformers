@@ -17,7 +17,10 @@
 package poller
 
 import (
+	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
+	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres/repositories"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 
@@ -27,22 +30,29 @@ import (
 )
 
 type AccountPoller interface {
-	PollAccounts(accounts []common.Address, blockNumber int64) ([]shared.CoinBalanceRecord, error)
+	PollAccounts(accounts []common.Address, blockNumber, headerID int64) ([]shared.CoinBalanceRecord, error)
 }
 
 type accountPoller struct {
-	blockChain core.BlockChain
+	headerRepository repositories.HeaderRepository
+	blockChain       core.BlockChain
+	balanceCache     map[common.Address]*big.Int
 }
 
-func NewAccountPoller(bc core.BlockChain) *accountPoller {
+func NewAccountPoller(db *postgres.DB, bc core.BlockChain) *accountPoller {
 	return &accountPoller{
-		blockChain: bc,
+		headerRepository: repositories.NewHeaderRepository(db),
+		blockChain:       bc,
+		balanceCache:     make(map[common.Address]*big.Int),
 	}
 }
 
-func (ap *accountPoller) PollAccounts(accounts []common.Address, blockNumber int64) ([]shared.CoinBalanceRecord, error) {
+func (ap *accountPoller) PollAccounts(accounts []common.Address, blockNumber, headerID int64) ([]shared.CoinBalanceRecord, error) {
 	balanceRecords := make([]shared.CoinBalanceRecord, 0)
 	for _, addr := range accounts {
+		if ap.balanceCache[addr] == nil {
+			ap.balanceCache[addr] = big.NewInt(0)
+		}
 		record := shared.CoinBalanceRecord{
 			BlockNumber: blockNumber,
 			Address:     addr.Bytes(),
@@ -51,8 +61,31 @@ func (ap *accountPoller) PollAccounts(accounts []common.Address, blockNumber int
 		if err != nil {
 			return nil, err
 		}
+		if ap.balanceCache[addr].String() != balance.String() {
+			err = ap.pollTx(addr, blockNumber, headerID)
+			if err != nil {
+				return nil, err
+			}
+		}
+		ap.balanceCache[addr] = balance
 		record.Value = balance.String()
 		balanceRecords = append(balanceRecords, record)
 	}
 	return balanceRecords, nil
+}
+
+func (ap *accountPoller) pollTx(addr common.Address, blockNumber, headerID int64) error {
+	blk, err := ap.blockChain.GetBlockByNumber(blockNumber)
+	if err != nil {
+		return err
+	}
+	for _, trx := range blk.Transactions {
+		if strings.ToLower(trx.From) == strings.ToLower(addr.String()) || strings.ToLower(trx.To) == strings.ToLower(addr.String()) {
+			err = ap.headerRepository.CreateTransaction(headerID, trx)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
