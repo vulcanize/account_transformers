@@ -123,8 +123,11 @@ func (blockRepository BlockRepository) GetBlock(blockNumber int64) (core.Block, 
 
 func (blockRepository BlockRepository) insertBlock(block core.Block) (int64, error) {
 	var blockId int64
-	tx, _ := blockRepository.database.Beginx()
-	err := tx.QueryRow(
+	tx, beginErr := blockRepository.database.Beginx()
+	if beginErr != nil {
+		return 0, postgres.ErrBeginTransactionFailed(beginErr)
+	}
+	insertBlockErr := tx.QueryRow(
 		`INSERT INTO blocks
                 (eth_node_id, number, gaslimit, gasused, time, difficulty, hash, nonce, parenthash, size, uncle_hash, is_final, miner, extra_data, reward, uncles_reward, eth_node_fingerprint)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
@@ -147,25 +150,38 @@ func (blockRepository BlockRepository) insertBlock(block core.Block) (int64, err
 		utilities.NullToZero(block.UnclesReward),
 		blockRepository.database.Node.ID).
 		Scan(&blockId)
-	if err != nil {
-		tx.Rollback()
-		return 0, err
+	if insertBlockErr != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			log.Error("failed to rollback transaction: ", rollbackErr)
+		}
+		return 0, postgres.ErrDBInsertFailed(insertBlockErr)
 	}
 	if len(block.MappedUncleRewards) > 0 {
-		err = blockRepository.createUncleRewards(tx, blockId, block.Hash, block.MappedUncleRewards)
+		err := blockRepository.createUncleRewards(tx, blockId, block.Hash, block.MappedUncleRewards)
 		if err != nil {
 			tx.Rollback()
-			return 0, postgres.ErrDBInsertFailed
+			return 0, postgres.ErrDBInsertFailed(insertBlockErr)
 		}
 	}
 	if len(block.Transactions) > 0 {
-		err = blockRepository.createTransactions(tx, blockId, block.Transactions)
-		if err != nil {
-			tx.Rollback()
-			return 0, postgres.ErrDBInsertFailed
+		insertTxErr := blockRepository.createTransactions(tx, blockId, block.Transactions)
+		if insertTxErr != nil {
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
+				log.Warn("failed to rollback transaction: ", rollbackErr)
+			}
+			return 0, postgres.ErrDBInsertFailed(insertTxErr)
 		}
 	}
-	tx.Commit()
+	commitErr := tx.Commit()
+	if commitErr != nil {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil {
+			log.Warn("failed to rollback transaction: ", rollbackErr)
+		}
+		return 0, commitErr
+	}
 	return blockId, nil
 }
 
@@ -191,7 +207,7 @@ func (blockRepository BlockRepository) createUncleReward(tx *sqlx.Tx, blockId in
 	return err
 }
 
-func (blockRepository BlockRepository) createTransactions(tx *sqlx.Tx, blockId int64, transactions []core.Transaction) error {
+func (blockRepository BlockRepository) createTransactions(tx *sqlx.Tx, blockId int64, transactions []core.TransactionModel) error {
 	for _, transaction := range transactions {
 		err := blockRepository.createTransaction(tx, blockId, transaction)
 		if err != nil {
@@ -211,21 +227,13 @@ func nullStringToZero(s string) string {
 	return s
 }
 
-func (blockRepository BlockRepository) createTransaction(tx *sqlx.Tx, blockId int64, transaction core.Transaction) error {
+func (blockRepository BlockRepository) createTransaction(tx *sqlx.Tx, blockId int64, transaction core.TransactionModel) error {
 	_, err := tx.Exec(
-		`INSERT INTO transactions
-       (block_id, hash, nonce, tx_to, tx_from, gaslimit, gasprice, value, input_data)
-       VALUES ($1, $2, $3, $4, $5, $6, $7,  $8::NUMERIC, $9)
-       RETURNING id`,
-		blockId,
-		transaction.Hash,
-		transaction.Nonce,
-		transaction.To,
-		transaction.From,
-		transaction.GasLimit,
-		transaction.GasPrice,
-		nullStringToZero(transaction.Value),
-		transaction.Data)
+		`INSERT INTO full_sync_transactions
+       (block_id, gaslimit, gasprice, hash, input_data, nonce, raw, tx_from, tx_index, tx_to, "value")
+       VALUES ($1, $2::NUMERIC, $3::NUMERIC, $4, $5, $6::NUMERIC, $7,  $8, $9::NUMERIC, $10, $11::NUMERIC)
+       RETURNING id`, blockId, transaction.GasLimit, transaction.GasPrice, transaction.Hash, transaction.Data,
+		transaction.Nonce, transaction.Raw, transaction.From, transaction.TxIndex, transaction.To, transaction.Value)
 	if err != nil {
 		return err
 	}
@@ -244,11 +252,11 @@ func (blockRepository BlockRepository) createTransaction(tx *sqlx.Tx, blockId in
 	return nil
 }
 
-func hasLogs(transaction core.Transaction) bool {
+func hasLogs(transaction core.TransactionModel) bool {
 	return len(transaction.Receipt.Logs) > 0
 }
 
-func hasReceipt(transaction core.Transaction) bool {
+func hasReceipt(transaction core.TransactionModel) bool {
 	return transaction.Receipt.TxHash != ""
 }
 
@@ -270,6 +278,7 @@ func (blockRepository BlockRepository) createReceipt(tx *sqlx.Tx, blockId int64,
 
 func (blockRepository BlockRepository) getBlockHash(block core.Block) (string, bool) {
 	var retrievedBlockHash string
+	// TODO: handle possible error
 	blockRepository.database.Get(&retrievedBlockHash,
 		`SELECT hash
                FROM blocks
@@ -287,7 +296,7 @@ func (blockRepository BlockRepository) createLogs(tx *sqlx.Tx, logs []core.Log, 
 			tlog.BlockNumber, tlog.Address, tlog.TxHash, tlog.Index, tlog.Topics[0], tlog.Topics[1], tlog.Topics[2], tlog.Topics[3], tlog.Data, receiptId,
 		)
 		if err != nil {
-			return postgres.ErrDBInsertFailed
+			return postgres.ErrDBInsertFailed(err)
 		}
 	}
 	return nil
@@ -299,12 +308,10 @@ func blockExists(retrievedBlockHash string) bool {
 
 func (blockRepository BlockRepository) removeBlock(blockNumber int64) error {
 	_, err := blockRepository.database.Exec(
-		`DELETE FROM
-                blocks
-                WHERE number=$1 AND eth_node_id=$2`,
+		`DELETE FROM blocks WHERE number=$1 AND eth_node_id=$2`,
 		blockNumber, blockRepository.database.NodeID)
 	if err != nil {
-		return postgres.ErrDBDeleteFailed
+		return postgres.ErrDBDeleteFailed(err)
 	}
 	return nil
 }
@@ -321,17 +328,19 @@ func (blockRepository BlockRepository) loadBlock(blockRows *sqlx.Row) (core.Bloc
 		return core.Block{}, err
 	}
 	transactionRows, err := blockRepository.database.Queryx(`
-            SELECT hash,
-				   nonce,
-				   tx_to,
-				   tx_from,
-				   gaslimit,
-				   gasprice,
-				   value,
-				   input_data
-            FROM transactions
-            WHERE block_id = $1
-            ORDER BY hash`, block.ID)
+		SELECT hash,
+			gaslimit,
+			gasprice,
+			input_data,
+			nonce,
+			raw,
+			tx_from,
+			tx_index,
+			tx_to,
+			value
+		FROM full_sync_transactions
+		WHERE block_id = $1
+		ORDER BY hash`, block.ID)
 	if err != nil {
 		log.Error("loadBlock: error fetting transactions: ", err)
 		return core.Block{}, err
@@ -340,10 +349,10 @@ func (blockRepository BlockRepository) loadBlock(blockRows *sqlx.Row) (core.Bloc
 	return block.Block, nil
 }
 
-func (blockRepository BlockRepository) LoadTransactions(transactionRows *sqlx.Rows) []core.Transaction {
-	var transactions []core.Transaction
+func (blockRepository BlockRepository) LoadTransactions(transactionRows *sqlx.Rows) []core.TransactionModel {
+	var transactions []core.TransactionModel
 	for transactionRows.Next() {
-		var transaction core.Transaction
+		var transaction core.TransactionModel
 		err := transactionRows.StructScan(&transaction)
 		if err != nil {
 			log.Fatal(err)
