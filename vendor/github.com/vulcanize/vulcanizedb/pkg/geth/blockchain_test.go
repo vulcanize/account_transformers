@@ -31,20 +31,23 @@ import (
 	vulcCore "github.com/vulcanize/vulcanizedb/pkg/core"
 	"github.com/vulcanize/vulcanizedb/pkg/fakes"
 	"github.com/vulcanize/vulcanizedb/pkg/geth"
-	"github.com/vulcanize/vulcanizedb/pkg/geth/converters/cold_db"
 )
 
 var _ = Describe("Geth blockchain", func() {
-	var mockClient *fakes.MockEthClient
-	var mockRpcClient *fakes.MockRpcClient
-	var node vulcCore.Node
-	var blockChain *geth.BlockChain
+	var (
+		mockClient               *fakes.MockEthClient
+		blockChain               *geth.BlockChain
+		mockRpcClient            *fakes.MockRpcClient
+		mockTransactionConverter *fakes.MockTransactionConverter
+		node                     vulcCore.Node
+	)
 
 	BeforeEach(func() {
 		mockClient = fakes.NewMockEthClient()
 		mockRpcClient = fakes.NewMockRpcClient()
+		mockTransactionConverter = fakes.NewMockTransactionConverter()
 		node = vulcCore.Node{}
-		blockChain = geth.NewBlockChain(mockClient, mockRpcClient, node, cold_db.NewColdDbTransactionConverter())
+		blockChain = geth.NewBlockChain(mockClient, mockRpcClient, node, mockTransactionConverter)
 	})
 
 	Describe("getting a block", func() {
@@ -90,8 +93,6 @@ var _ = Describe("Geth blockchain", func() {
 			})
 
 			It("fetches headers with multiple blocks", func() {
-				blockChain = geth.NewBlockChain(mockClient, mockRpcClient, node, cold_db.NewColdDbTransactionConverter())
-
 				_, err := blockChain.GetHeaderByNumbers([]int64{100, 99})
 
 				Expect(err).NotTo(HaveOccurred())
@@ -104,7 +105,7 @@ var _ = Describe("Geth blockchain", func() {
 				node.NetworkID = vulcCore.KOVAN_NETWORK_ID
 				blockNumber := hexutil.Big(*big.NewInt(100))
 				mockRpcClient.SetReturnPOAHeader(vulcCore.POAHeader{Number: &blockNumber})
-				blockChain = geth.NewBlockChain(mockClient, mockRpcClient, node, cold_db.NewColdDbTransactionConverter())
+				blockChain = geth.NewBlockChain(mockClient, mockRpcClient, node, fakes.NewMockTransactionConverter())
 
 				_, err := blockChain.GetHeaderByNumber(100)
 
@@ -115,7 +116,7 @@ var _ = Describe("Geth blockchain", func() {
 			It("returns err if rpcClient returns err", func() {
 				node.NetworkID = vulcCore.KOVAN_NETWORK_ID
 				mockRpcClient.SetCallContextErr(fakes.FakeError)
-				blockChain = geth.NewBlockChain(mockClient, mockRpcClient, node, cold_db.NewColdDbTransactionConverter())
+				blockChain = geth.NewBlockChain(mockClient, mockRpcClient, node, fakes.NewMockTransactionConverter())
 
 				_, err := blockChain.GetHeaderByNumber(100)
 
@@ -125,7 +126,7 @@ var _ = Describe("Geth blockchain", func() {
 
 			It("returns error if returned header is empty", func() {
 				node.NetworkID = vulcCore.KOVAN_NETWORK_ID
-				blockChain = geth.NewBlockChain(mockClient, mockRpcClient, node, cold_db.NewColdDbTransactionConverter())
+				blockChain = geth.NewBlockChain(mockClient, mockRpcClient, node, fakes.NewMockTransactionConverter())
 
 				_, err := blockChain.GetHeaderByNumber(100)
 
@@ -137,7 +138,6 @@ var _ = Describe("Geth blockchain", func() {
 				node.NetworkID = vulcCore.KOVAN_NETWORK_ID
 				blockNumber := hexutil.Big(*big.NewInt(100))
 				mockRpcClient.SetReturnPOAHeaders([]vulcCore.POAHeader{{Number: &blockNumber}})
-				blockChain = geth.NewBlockChain(mockClient, mockRpcClient, node, cold_db.NewColdDbTransactionConverter())
 
 				_, err := blockChain.GetHeaderByNumbers([]int64{100, 99})
 
@@ -214,6 +214,22 @@ var _ = Describe("Geth blockchain", func() {
 
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(fakes.FakeError))
+		})
+	})
+
+	Describe("getting transactions", func() {
+		It("fetches transaction for each hash", func() {
+			_, err := blockChain.GetTransactions([]common.Hash{{}, {}})
+
+			Expect(err).NotTo(HaveOccurred())
+			mockRpcClient.AssertBatchCalledWith("eth_getTransactionByHash", 2)
+		})
+
+		It("converts transaction indexes from hex to int", func() {
+			_, err := blockChain.GetTransactions([]common.Hash{{}, {}})
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(mockTransactionConverter.ConvertHeaderTransactionIndexToIntCalled).To(BeTrue())
 		})
 	})
 

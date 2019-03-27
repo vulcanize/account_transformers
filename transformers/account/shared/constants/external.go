@@ -41,9 +41,14 @@ func getStringSlice(key string) []string {
 	return value
 }
 
+func getInt(key string) int64 {
+	initConfig()
+	return viper.GetInt64(key)
+}
+
 // Gets a map of top level Token addresses to a list of other addresses that emit events for this Token
 func equivalentTokenAddressesMapping() map[string][]string {
-	return getStringMapStringSlice("equivalents")
+	return getStringMapStringSlice("token.equivalents")
 }
 
 func EquivalentTokenAddressesMapping() map[common.Address][]common.Address {
@@ -70,4 +75,8 @@ func AccountAddresses() []common.Address {
 		addrs = append(addrs, common.HexToAddress(strAddr))
 	}
 	return addrs
+}
+
+func StartingBlock() int64 {
+	return getInt("account.start")
 }

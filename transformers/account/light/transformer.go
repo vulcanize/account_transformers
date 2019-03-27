@@ -63,7 +63,7 @@ func (tbt TokenBalanceTransformer) NewTransformer(db *postgres.DB, blockChain co
 		CoinBalanceRepository:        repositories.NewAccountCoinBalanceRepository(db),
 		TokenBalanceRepository:       repositories.NewAccountTokenBalanceRepository(db),
 		AccountPoller:                poller.NewAccountPoller(blockChain),
-		NextStart:                    0,
+		NextStart:                    constants.StartingBlock(),
 	}
 }
 
@@ -129,11 +129,11 @@ func (tbt *TokenBalanceTransformer) Execute() error {
 			return err
 		}
 		for _, header := range checkedButNotRecordedHeaders {
-			mappedValueTransferRecords, err := tbt.ValueTransferEventRepository.GetTokenValueTransferRecordsForAccounts(addresses, header.BlockNumber)
+			transferRecords, err := tbt.ValueTransferEventRepository.GetTokenValueTransferRecordsForAccount(addr, header.BlockNumber)
 			if err != nil {
 				return err
 			}
-			tokenBalanceRecords := tbt.TokenBalanceConverter.Convert(mappedValueTransferRecords, header.BlockNumber)
+			tokenBalanceRecords := tbt.TokenBalanceConverter.Convert(addr, transferRecords, header.BlockNumber)
 			err = tbt.TokenBalanceRepository.CreateTokenBalanceRecords(tokenBalanceRecords, header.Id)
 			if err != nil {
 				return err

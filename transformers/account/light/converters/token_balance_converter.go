@@ -27,7 +27,8 @@ import (
 )
 
 type TokenBalanceConverter interface {
-	Convert(mappedTransferRecords map[common.Address][]models.ValueTransferModel, blockNumber int64) []shared.TokenBalanceRecord
+	Convert(account common.Address, records []models.ValueTransferModel, blockNumber int64) []shared.TokenBalanceRecord
+	ConvertForAll(mappedTransferRecords map[common.Address][]models.ValueTransferModel, blockNumber int64) []shared.TokenBalanceRecord
 }
 
 type tokenBalanceConverter struct{}
@@ -36,7 +37,33 @@ func NewTokenBalanceConverter() *tokenBalanceConverter {
 	return &tokenBalanceConverter{}
 }
 
-func (c *tokenBalanceConverter) Convert(mappedTransferRecords map[common.Address][]models.ValueTransferModel, blockNumber int64) []shared.TokenBalanceRecord {
+func (c *tokenBalanceConverter) Convert(account common.Address, records []models.ValueTransferModel, blockNumber int64) []shared.TokenBalanceRecord {
+	balanceRecords := make([]shared.TokenBalanceRecord, 0)
+	for _, record := range records {
+		tokenBalanceRecord := shared.TokenBalanceRecord{
+			Address:         account.Bytes(),
+			ContractAddress: common.HexToAddress(record.Contract).Bytes(),
+			BlockNumber:     blockNumber,
+		}
+		value := big.NewInt(0)
+		for _, record := range records {
+			amount := new(big.Int)
+			if record.Dst == account.Hex() {
+				amount.SetString(utilities.NullToZero(record.Amount), 10)
+				value = value.Add(value, amount)
+			}
+			if record.Src == account.Hex() {
+				amount.SetString(utilities.NullToZero(record.Amount), 10)
+				value = value.Sub(value, amount)
+			}
+		}
+		tokenBalanceRecord.Value = value.String()
+		balanceRecords = append(balanceRecords, tokenBalanceRecord)
+	}
+	return balanceRecords
+}
+
+func (c *tokenBalanceConverter) ConvertForAll(mappedTransferRecords map[common.Address][]models.ValueTransferModel, blockNumber int64) []shared.TokenBalanceRecord {
 	balanceRecords := make([]shared.TokenBalanceRecord, 0)
 	contractSortedTransferRecords := sortByContract(mappedTransferRecords)
 	for addr, mappedRecords := range contractSortedTransferRecords {

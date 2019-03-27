@@ -28,6 +28,7 @@ import (
 
 type ValueTransferEventRepository interface {
 	CreateTokenValueTransferRecords(models []models.ValueTransferModel) error
+	GetTokenValueTransferRecordsForAccount(address common.Address, lastBlock int64) ([]models.ValueTransferModel, error)
 	GetTokenValueTransferRecordsForAccounts(addresses []common.Address, lastBlock int64) (map[common.Address][]models.ValueTransferModel, error)
 }
 
@@ -79,6 +80,31 @@ func (br *valueTransferEventRepository) CreateTokenValueTransferRecords(records 
 		}
 	}
 	return tx.Commit()
+}
+
+func (br *valueTransferEventRepository) GetTokenValueTransferRecordsForAccount(address common.Address, lastBlock int64) ([]models.ValueTransferModel, error) {
+	var records []models.ValueTransferModel
+	pgStr := `SELECT header_id, name, block_number, dst, src, amount, contract, log_idx, tx_idx, raw_log FROM accounts.token_value_transfers
+			WHERE (dst = $1 OR src = $1) AND block_number <= $2`
+	rows, err := br.DB.Queryx(pgStr, address.Hex(), lastBlock)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		record := new(models.ValueTransferModel)
+		err = rows.StructScan(record)
+		if err != nil {
+			rows.Close()
+			return nil, err
+		}
+		records = append(records, *record)
+	}
+	if err = rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+	return records, nil
 }
 
 func (br *valueTransferEventRepository) GetTokenValueTransferRecordsForAccounts(addresses []common.Address, lastBlock int64) (map[common.Address][]models.ValueTransferModel, error) {
