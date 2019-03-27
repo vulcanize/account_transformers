@@ -38,20 +38,20 @@ func NewAddressRepository(db *postgres.DB) *addressRepository {
 }
 
 func (ar *addressRepository) GetAddresses() ([]common.Address, error) {
-	dest := new([]string)
+	dest := new([][]byte)
 	err := ar.DB.Select(dest, `SELECT * FROM accounts.addresses`)
 	if err != nil {
 		return nil, err
 	}
 	addresses := make([]common.Address, 0, len(*dest))
-	for _, addrStr := range *dest {
-		addr := common.HexToAddress(addrStr)
+	for _, addrBytes := range *dest {
+		addr := common.BytesToAddress(addrBytes)
 		addresses = append(addresses, addr)
 	}
 	return addresses, nil
 }
 
 func (ar *addressRepository) AddAddress(addr common.Address) error {
-	_, err := ar.DB.Exec(`INSERT INTO accounts.addresses (address) VALUES ($1) ON CONFLICT (address) DO NOTHING`, addr.Hex())
+	_, err := ar.DB.Exec(`INSERT INTO accounts.addresses (address) VALUES ($1) ON CONFLICT (address) DO NOTHING`, addr.Bytes())
 	return err
 }

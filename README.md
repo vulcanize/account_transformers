@@ -21,7 +21,7 @@ Currently, this transformer needs to be run from the `account_transformer_stagin
 of VulcanizeDB, so switch to that branch before building.
 
 Once vulcanizeDB is setup and built, run vulcanizeDB in `lightSync` [mode](https://github.com/vulcanize/maker-vulcanizedb#alternatively-sync-in-light-mode)
-to begin syncing headers into Postgres. It is vital that this sync process begins at block 0.
+to begin syncing headers into Postgres. It is vital that this sync process begins at a block before the `account.start` field below.
 
 Once `lightSync` has begun, we can run the `composeAndExecute` command to compose and execute our account transformer. To
 do so, we use a normal `compose` [config](https://github.com/vulcanize/maker-vulcanizedb#contractwatcher) with two additional parameter maps:
@@ -33,19 +33,24 @@ do so, we use a normal `compose` [config](https://github.com/vulcanize/maker-vul
     ]
 
 [account]
+    start     = 0
     addresses = [
         "0x48E78948C80e9f8F53190DbDF2990f9a69491ef4",
         "0x009C1E8674038605C5AE33C74f13bC528E1222B5"
     ]
 ```
 
-The first, `equivalents` is used to manually map contract addresses which represent the same token and need to be tracked
+`equivalents` is used to manually map contract addresses which represent the same token and need to be tracked
 as such. This is the case as in the example with TrueUSD, where `0x0000000000085d4780B73119b644AE5ecd22b376` is a proxy
 contract that was upgraded to from the direct implementation at `0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E`, meaning events
 before the upgrade were emitted from `0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E` whereas they are now emitted from `0x0000000000085d4780B73119b644AE5ecd22b376`
 and we need to know to treat them equivalently in order to properly index TrueUSD token balances.
 
-The second, `account` is used to specify which user account addresses we want to track and index ETH balance and token balance
+`account.start` is used to specify when to begin watching events and producing token and eth balance records for the user accounts,
+this needs to be set to a block lower than the deployment block of any tokens we want to track. Additionally, this block number must fall within
+the contiguous set of unchecked_headers (this is important if we need to restart a sync, we will need to restart from the lowest unchecked header)
+
+`account.addresses` is used to specify which user account addresses we want to track and index ETH balance and token balance
 records for. This can also be updated at runtime by adding new addresses to the `accounts.addresses` table in Postgres.
 
 Currently, this config's `ipcPath` needs to point to an archival node endpoint in order to track ETH balances, this will be deprecated
@@ -106,6 +111,26 @@ CREATE TABLE accounts.address_coin_balances (
   inserted_at                 TIMESTAMP WITHOUT TIME ZONE NOT NULL,
   updated_at                  TIMESTAMP WITHOUT TIME ZONE,
   UNIQUE (address_hash, block_number)
+);
+```
+
+It also syncs the users (and only the users) transactions into the core vDB `light_sync_transactions` table
+
+```postgresql
+CREATE TABLE light_sync_transactions (
+  id          SERIAL PRIMARY KEY,
+  header_id   INTEGER NOT NULL REFERENCES headers(id) ON DELETE CASCADE,
+  hash        TEXT,
+  gaslimit    NUMERIC,
+  gasprice    NUMERIC,
+  input_data  BYTEA,
+  nonce       NUMERIC,
+  raw         BYTEA,
+  tx_from     TEXT,
+  tx_index    INTEGER,
+  tx_to       TEXT,
+  "value"     NUMERIC,
+  UNIQUE (header_id, hash)
 );
 ```
 
