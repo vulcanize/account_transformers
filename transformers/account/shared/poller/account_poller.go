@@ -34,6 +34,7 @@ type AccountPoller interface {
 }
 
 type accountPoller struct {
+	db               *postgres.DB
 	headerRepository repositories.HeaderRepository
 	blockChain       core.BlockChain
 	balanceCache     map[common.Address]*big.Int
@@ -41,6 +42,7 @@ type accountPoller struct {
 
 func NewAccountPoller(db *postgres.DB, bc core.BlockChain) *accountPoller {
 	return &accountPoller{
+		db:               db,
 		headerRepository: repositories.NewHeaderRepository(db),
 		blockChain:       bc,
 		balanceCache:     make(map[common.Address]*big.Int),
@@ -79,13 +81,23 @@ func (ap *accountPoller) pollTx(addr common.Address, blockNumber, headerID int64
 	if err != nil {
 		return err
 	}
+	tx, err := ap.db.Beginx()
+	if err != nil {
+		return err
+	}
 	for _, trx := range blk.Transactions {
 		if strings.ToLower(trx.From) == strings.ToLower(addr.String()) || strings.ToLower(trx.To) == strings.ToLower(addr.String()) {
-			err = ap.headerRepository.CreateTransaction(headerID, trx)
+			txId, err := ap.headerRepository.CreateTransactionInTx(tx, headerID, trx)
 			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			_, err = ap.headerRepository.CreateReceiptInTx(tx, headerID, txId, trx.Receipt)
+			if err != nil {
+				tx.Rollback()
 				return err
 			}
 		}
 	}
-	return nil
+	return tx.Commit()
 }

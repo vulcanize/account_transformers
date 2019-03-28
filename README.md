@@ -70,10 +70,10 @@ CREATE TABLE accounts.token_value_transfers (
   header_id    INTEGER NOT NULL REFERENCES headers (id) ON DELETE CASCADE,
   block_number BIGINT NOT NULL,
   name         VARCHAR NOT NULL CHECK (name <> ''),
-  dst          VARCHAR(66),
-  src          VARCHAR(66),
+  dst          VARCHAR(42),
+  src          VARCHAR(42),
   amount       NUMERIC,
-  contract     VARCHAR(66) NOT NULL,
+  contract     VARCHAR(42) NOT NULL,
   log_idx      INTEGER NOT NULL,
   tx_idx       INTEGER NOT NULL,
   raw_log      JSONB,
@@ -114,23 +114,38 @@ CREATE TABLE accounts.address_coin_balances (
 );
 ```
 
-It also syncs the users (and only the users) transactions into the core vDB `light_sync_transactions` table
+It also syncs the users (and only the users) transactions and receipts into the core vDB `light_sync_transactions` table
 
 ```postgresql
 CREATE TABLE light_sync_transactions (
   id          SERIAL PRIMARY KEY,
   header_id   INTEGER NOT NULL REFERENCES headers(id) ON DELETE CASCADE,
-  hash        TEXT,
+  hash        VARCHAR(66),
   gaslimit    NUMERIC,
   gasprice    NUMERIC,
   input_data  BYTEA,
   nonce       NUMERIC,
   raw         BYTEA,
-  tx_from     TEXT,
+  tx_from     VARCHAR(44),
   tx_index    INTEGER,
-  tx_to       TEXT,
+  tx_to       VARCHAR(44),
   "value"     NUMERIC,
   UNIQUE (header_id, hash)
+);
+```
+
+```postgresql
+CREATE TABLE light_sync_receipts(
+  id                  SERIAL PRIMARY KEY,
+  transaction_id      INTEGER NOT NULL REFERENCES light_sync_transactions(id) ON DELETE CASCADE,
+  header_id           INTEGER NOT NULL REFERENCES headers(id) ON DELETE CASCADE,
+  contract_address    VARCHAR(42),
+  cumulative_gas_used NUMERIC,
+  gas_used            NUMERIC,
+  state_root          VARCHAR(66),
+  status              INTEGER,
+  tx_hash             VARCHAR(66),
+  UNIQUE(header_id, transaction_id)
 );
 ```
 

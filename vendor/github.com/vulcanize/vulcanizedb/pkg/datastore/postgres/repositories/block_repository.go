@@ -158,10 +158,10 @@ func (blockRepository BlockRepository) insertBlock(block core.Block) (int64, err
 		return 0, postgres.ErrDBInsertFailed(insertBlockErr)
 	}
 	if len(block.MappedUncleRewards) > 0 {
-		err := blockRepository.createUncleRewards(tx, blockId, block.Hash, block.MappedUncleRewards)
-		if err != nil {
+		insertUncleErr := blockRepository.createUncleRewards(tx, blockId, block.Hash, block.MappedUncleRewards)
+		if insertUncleErr != nil {
 			tx.Rollback()
-			return 0, postgres.ErrDBInsertFailed(insertBlockErr)
+			return 0, postgres.ErrDBInsertFailed(insertUncleErr)
 		}
 	}
 	if len(block.Transactions) > 0 {
@@ -186,9 +186,9 @@ func (blockRepository BlockRepository) insertBlock(block core.Block) (int64, err
 }
 
 func (blockRepository BlockRepository) createUncleRewards(tx *sqlx.Tx, blockId int64, blockHash string, mappedUncleRewards map[string]map[string]*big.Int) error {
-	for miner, uncleRewards := range mappedUncleRewards {
+	for minerAddr, uncleRewards := range mappedUncleRewards {
 		for uncleHash, reward := range uncleRewards {
-			err := blockRepository.createUncleReward(tx, blockId, blockHash, miner, uncleHash, reward.String())
+			err := blockRepository.createUncleReward(tx, blockId, blockHash, minerAddr, uncleHash, reward.String())
 			if err != nil {
 				return err
 			}
@@ -197,13 +197,13 @@ func (blockRepository BlockRepository) createUncleRewards(tx *sqlx.Tx, blockId i
 	return nil
 }
 
-func (blockRepository BlockRepository) createUncleReward(tx *sqlx.Tx, blockId int64, blockHash, miner, uncleHash, amount string) error {
+func (blockRepository BlockRepository) createUncleReward(tx *sqlx.Tx, blockId int64, blockHash, minerAddr, uncleHash, amount string) error {
 	_, err := tx.Exec(
 		`INSERT INTO uncle_rewards
-       (block_id, block_hash, uncle_hash, uncle_reward, miner_address)
+       (block_id, block_hash, miner_address, uncle_hash, uncle_reward)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id`,
-		blockId, blockHash, miner, uncleHash, utilities.NullToZero(amount))
+		blockId, blockHash, minerAddr, uncleHash, utilities.NullToZero(amount))
 	return err
 }
 
@@ -264,7 +264,7 @@ func (blockRepository BlockRepository) createReceipt(tx *sqlx.Tx, blockId int64,
 	//Not currently persisting log bloom filters
 	var receiptId int
 	err := tx.QueryRow(
-		`INSERT INTO receipts
+		`INSERT INTO full_sync_receipts
                (contract_address, tx_hash, cumulative_gas_used, gas_used, state_root, status, block_id)
                VALUES ($1, $2, $3, $4, $5, $6, $7) 
                RETURNING id`,

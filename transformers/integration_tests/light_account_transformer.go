@@ -22,7 +22,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/vulcanize/account_transformers/transformers/account/config"
 	"github.com/vulcanize/account_transformers/transformers/account/light/test_helpers/fakes"
 	"github.com/vulcanize/account_transformers/transformers/account/light/test_helpers/mocks"
 	"github.com/vulcanize/account_transformers/transformers/account/shared"
@@ -33,6 +32,7 @@ import (
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres/repositories"
 
+	"github.com/vulcanize/account_transformers/transformers/account/config"
 	transformer "github.com/vulcanize/account_transformers/transformers/account/light"
 	"github.com/vulcanize/account_transformers/transformers/account/light/converters"
 	r2 "github.com/vulcanize/account_transformers/transformers/account/light/repositories"
@@ -110,7 +110,10 @@ var _ = Describe("Transformer", func() {
 				common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5"),
 			}
 
-			// We get token transfer records up to the provided block
+			/*
+				It creates generic value transfer event reocrds
+			*/
+
 			Expect(f.PassedHeaders[0].Id).To(Equal(headerID))
 			transferRecords, err := t.ValueTransferEventRepository.GetTokenValueTransferRecordsForAccounts(addrs, 6791667)
 			Expect(err).ToNot(HaveOccurred())
@@ -153,6 +156,10 @@ var _ = Describe("Transformer", func() {
 			Expect(transferRecords[addrs[1]][1].Dst).To(Equal("0x0000000000000000000000000000000000000000"))
 			Expect(transferRecords[addrs[1]][1].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 
+			/*
+				It creates eth balance records
+			*/
+
 			var coinRecord shared.CoinBalanceRecord
 			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes(), 6791667)
 			Expect(err).ToNot(HaveOccurred())
@@ -190,11 +197,17 @@ var _ = Describe("Transformer", func() {
 			Expect(coinRecord.BlockNumber).To(Equal(int64(6791669)))
 			Expect(coinRecord.Value).To(Equal("172845293271568077794"))
 
-			// First header, one event with only our first watched address => one record
-			var tokenRecord shared.TokenBalanceRecord
-			err = db.Get(&tokenRecord, `SELECT address_hash, block_number, value, token_contract_address_hash 
+			/*
+				It creates token balance records
+			*/
+
+			pgStr := `SELECT address_hash, block_number, value, token_contract_address_hash 
 											FROM accounts.address_token_balances 
-											WHERE address_hash = $1 AND token_contract_address_hash = $2 AND block_number = $3`,
+											WHERE address_hash = $1 AND token_contract_address_hash = $2 AND block_number = $3`
+			var tokenRecord shared.TokenBalanceRecord
+
+			// First header, one event with only our first watched address => one record
+			err = db.Get(&tokenRecord, pgStr,
 				common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes(),
 				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes(),
 				6791667)
@@ -205,9 +218,7 @@ var _ = Describe("Transformer", func() {
 			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
 
 			// Second header, another event with both our watched addresses => two more records
-			err = db.Get(&tokenRecord, `SELECT address_hash, block_number, value, token_contract_address_hash 
-											FROM accounts.address_token_balances 
-											WHERE address_hash = $1 AND token_contract_address_hash = $2 AND block_number = $3`,
+			err = db.Get(&tokenRecord, pgStr,
 				common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes(),
 				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes(),
 				6791668)
@@ -217,9 +228,7 @@ var _ = Describe("Transformer", func() {
 			Expect(tokenRecord.Value).To(Equal("0"))
 			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
 
-			err = db.Get(&tokenRecord, `SELECT address_hash, block_number, value, token_contract_address_hash 
-											FROM accounts.address_token_balances 
-											WHERE address_hash = $1 AND token_contract_address_hash = $2 AND block_number = $3`,
+			err = db.Get(&tokenRecord, pgStr,
 				common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes(),
 				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes(),
 				6791668)
@@ -230,9 +239,7 @@ var _ = Describe("Transformer", func() {
 			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
 
 			// Third header, another event with only the 2nd address => two more records, one changed and one unchanged
-			err = db.Get(&tokenRecord, `SELECT address_hash, block_number, value, token_contract_address_hash 
-											FROM accounts.address_token_balances 
-											WHERE address_hash = $1 AND token_contract_address_hash = $2 AND block_number = $3`,
+			err = db.Get(&tokenRecord, pgStr,
 				common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes(),
 				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes(),
 				6791669)
@@ -242,9 +249,7 @@ var _ = Describe("Transformer", func() {
 			Expect(tokenRecord.Value).To(Equal("0"))
 			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
 
-			err = db.Get(&tokenRecord, `SELECT address_hash, block_number, value, token_contract_address_hash 
-											FROM accounts.address_token_balances 
-											WHERE address_hash = $1 AND token_contract_address_hash = $2 AND block_number = $3`,
+			err = db.Get(&tokenRecord, pgStr,
 				common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes(),
 				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes(),
 				6791669)
@@ -254,20 +259,45 @@ var _ = Describe("Transformer", func() {
 			Expect(tokenRecord.Value).To(Equal("0"))
 			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
 
-			trx := new(core.TransactionModel)
-			err = db.Get(trx, `SELECT hash, gaslimit, gasprice, nonce, tx_to, tx_from, value 
+			/*
+				It creates transaction records
+			*/
+
+			pgStr = `SELECT hash, gaslimit, gasprice, nonce, tx_to, tx_from, value 
 											FROM public.light_sync_transactions 
-											WHERE header_id = $1 AND (tx_from = $2 OR tx_to = $2)`,
-				headerID2,
+											WHERE header_id = $1 AND (tx_from = $2 OR tx_to = $2)`
+			trx1 := new(core.TransactionModel)
+			err = db.Get(trx1, pgStr, headerID2,
 				strings.ToLower(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Hex()))
 			Expect(err).ToNot(HaveOccurred())
+			println("HASH")
+			println(trx1.Hash)
 
-			err = db.Get(trx, `SELECT hash, gaslimit, gasprice, nonce, tx_to, tx_from, value 
-											FROM public.light_sync_transactions 
-											WHERE header_id = $1 AND (tx_from = $2 OR tx_to = $2)`,
-				headerID2,
+			trx2 := new(core.TransactionModel)
+			err = db.Get(trx2, pgStr, headerID2,
 				strings.ToLower(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Hex()))
 			Expect(err).ToNot(HaveOccurred())
+			Expect(trx1).ToNot(Equal(trx2))
+
+			/*
+				It creates receipt records
+			*/
+
+			pgStr = `SELECT contract_address, cumulative_gas_used, gas_used, state_root, status, tx_hash
+											FROM public.light_sync_receipts
+											WHERE header_id = $1 AND tx_hash = $2`
+			receipt1 := new(core.ReceiptModel)
+			err = db.Get(receipt1, pgStr,
+				headerID2,
+				trx1.Hash)
+			Expect(err).ToNot(HaveOccurred())
+
+			receipt2 := new(core.ReceiptModel)
+			err = db.Get(receipt2, pgStr,
+				headerID2,
+				trx2.Hash)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(trx1).ToNot(Equal(trx2))
 		})
 
 		It("If `next start` isn't contiguous with the headers we have available, we can't do anything", func() {
