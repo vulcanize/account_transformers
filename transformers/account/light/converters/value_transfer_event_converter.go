@@ -87,7 +87,7 @@ func (c *valueTransferConverter) unpack(log types.Log, headerID int64, topicCoun
 	abiEventName := c.boundEvent.Names[topicCount-1]
 	err := c.boundContract.UnpackLogIntoMap(unpackMap, abiEventName, log)
 	if err != nil {
-		return models.ValueTransferModel{}, err
+		return models.ValueTransferModel{}, errors.New(fmt.Sprintf("unable to unpack %s: %v", abiEventName, err))
 	}
 	raw, err := json.Marshal(log)
 	if err != nil {
@@ -118,8 +118,8 @@ func (c *valueTransferConverter) unpack(log types.Log, headerID int64, topicCoun
 		HeaderID:         headerID,
 		Name:             c.boundEvent.Label.Name(),
 		BlockNumber:      log.BlockNumber,
-		Src:              src.Hex(),
-		Dst:              dst.Hex(),
+		Src:              src.Bytes(),
+		Dst:              dst.Bytes(),
 		Amount:           amount.String(),
 		Contract:         c.getEquivalent(log.Address),
 		LogIndex:         log.Index,
@@ -128,13 +128,13 @@ func (c *valueTransferConverter) unpack(log types.Log, headerID int64, topicCoun
 	}, nil
 }
 
-func (c *valueTransferConverter) getEquivalent(addr common.Address) string {
+func (c *valueTransferConverter) getEquivalent(addr common.Address) []byte {
 	for topAddr, equivalents := range c.mappedEquivalentAddrs {
 		for _, equivalent := range equivalents {
 			if equivalent == addr {
-				return topAddr.Hex()
+				return topAddr.Bytes()
 			}
 		}
 	}
-	return addr.Hex() // If we find no top level equivalency to map this token address to, return it
+	return addr.Bytes() // If we find no top level equivalency to map this token address to, return it
 }

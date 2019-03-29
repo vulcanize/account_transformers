@@ -17,16 +17,13 @@
 package integration_tests
 
 import (
+	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/fetcher"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/vulcanize/account_transformers/transformers/account/light/test_helpers/fakes"
-	"github.com/vulcanize/account_transformers/transformers/account/light/test_helpers/mocks"
-	"github.com/vulcanize/account_transformers/transformers/account/shared"
 
-	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/fetcher"
 	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/core"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
@@ -36,6 +33,9 @@ import (
 	transformer "github.com/vulcanize/account_transformers/transformers/account/light"
 	"github.com/vulcanize/account_transformers/transformers/account/light/converters"
 	r2 "github.com/vulcanize/account_transformers/transformers/account/light/repositories"
+	"github.com/vulcanize/account_transformers/transformers/account/light/test_helpers/fakes"
+	"github.com/vulcanize/account_transformers/transformers/account/light/test_helpers/mocks"
+	"github.com/vulcanize/account_transformers/transformers/account/shared"
 	c2 "github.com/vulcanize/account_transformers/transformers/account/shared/constants"
 	"github.com/vulcanize/account_transformers/transformers/account/shared/poller"
 	"github.com/vulcanize/account_transformers/transformers/account/shared/test_helpers"
@@ -45,7 +45,7 @@ var _ = Describe("Transformer", func() {
 	var db *postgres.DB
 	var blockChain core.BlockChain
 	var headerRepository repositories.HeaderRepository
-	var headerID, headerID2, headerID3 int64
+	var headerID0, headerID1, headerID2, headerID3 int64
 
 	BeforeEach(func() {
 		db, blockChain = test_helpers.SetupDBandBC()
@@ -71,9 +71,13 @@ var _ = Describe("Transformer", func() {
 
 	Describe("Execute", func() {
 		BeforeEach(func() {
-			header, err := blockChain.GetHeaderByNumber(6791667)
+			header, err := blockChain.GetHeaderByNumber(6791666)
 			Expect(err).ToNot(HaveOccurred())
-			headerID, err = headerRepository.CreateOrUpdateHeader(header)
+			headerID0, err = headerRepository.CreateOrUpdateHeader(header)
+			Expect(err).ToNot(HaveOccurred())
+			header, err = blockChain.GetHeaderByNumber(6791667)
+			Expect(err).ToNot(HaveOccurred())
+			headerID1, err = headerRepository.CreateOrUpdateHeader(header)
 			Expect(err).ToNot(HaveOccurred())
 			header, err = blockChain.GetHeaderByNumber(6791668)
 			Expect(err).ToNot(HaveOccurred())
@@ -90,12 +94,11 @@ var _ = Describe("Transformer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			t := transformer.TokenBalanceTransformer{
 				ValueTransferConverter:       vtc,
-				TokenBalanceConverter:        converters.NewTokenBalanceConverter(),
 				HeaderRepository:             repository.NewHeaderRepository(db),
 				AddressRepository:            r2.NewAddressRepository(db),
+				WatchedContractRepository:    r2.NewWatchedContractRepository(db),
 				ValueTransferEventRepository: r2.NewValueTransferEventRepository(db),
 				CoinBalanceRepository:        r2.NewAccountCoinBalanceRepository(db),
-				TokenBalanceRepository:       r2.NewAccountTokenBalanceRepository(db),
 				AccountPoller:                poller.NewAccountPoller(db, blockChain),
 			}
 			f := mocks.MockFetcher{}
@@ -111,49 +114,68 @@ var _ = Describe("Transformer", func() {
 			}
 
 			/*
-				It creates generic value transfer event reocrds
+				It creates generic value transfer event records
 			*/
 
-			Expect(f.PassedHeaders[0].Id).To(Equal(headerID))
+			Expect(f.PassedHeaders[0].Id).To(Equal(headerID0))
+			Expect(f.PassedHeaders[1].Id).To(Equal(headerID1))
 			transferRecords, err := t.ValueTransferEventRepository.GetTokenValueTransferRecordsForAccounts(addrs, 6791667)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(transferRecords[addrs[0]])).To(Equal(1))
+			Expect(len(transferRecords[addrs[0]])).To(Equal(3))
 			Expect(len(transferRecords[addrs[1]])).To(Equal(0))
-			Expect(transferRecords[addrs[0]][0].BlockNumber).To(Equal(uint64(6791667)))
-			Expect(transferRecords[addrs[0]][0].Contract).To(Equal("0x0000000000085d4780B73119b644AE5ecd22b376"))
-			Expect(transferRecords[addrs[0]][0].HeaderID).To(Equal(headerID))
-			Expect(transferRecords[addrs[0]][0].Src).To(Equal("0x0000000000000000000000000000000000000000"))
-			Expect(transferRecords[addrs[0]][0].Dst).To(Equal("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4"))
+			Expect(transferRecords[addrs[0]][0].BlockNumber).To(Equal(uint64(6791666)))
+			Expect(transferRecords[addrs[0]][0].Contract).To(Equal(common.HexToAddress("0xdAC17F958D2ee523a2206206994597C13D831ec7").Bytes()))
+			Expect(transferRecords[addrs[0]][0].HeaderID).To(Equal(headerID0))
+			Expect(transferRecords[addrs[0]][0].Src).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").Bytes()))
+			Expect(transferRecords[addrs[0]][0].Dst).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
 			Expect(transferRecords[addrs[0]][0].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
+			Expect(transferRecords[addrs[0]][1].BlockNumber).To(Equal(uint64(6791666)))
+			Expect(transferRecords[addrs[0]][1].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(transferRecords[addrs[0]][1].HeaderID).To(Equal(headerID0))
+			Expect(transferRecords[addrs[0]][1].Src).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").Bytes()))
+			Expect(transferRecords[addrs[0]][1].Dst).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(transferRecords[addrs[0]][1].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
+			Expect(transferRecords[addrs[0]][2].BlockNumber).To(Equal(uint64(6791667)))
+			Expect(transferRecords[addrs[0]][2].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(transferRecords[addrs[0]][2].HeaderID).To(Equal(headerID1))
+			Expect(transferRecords[addrs[0]][2].Src).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").Bytes()))
+			Expect(transferRecords[addrs[0]][2].Dst).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(transferRecords[addrs[0]][2].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 
-			Expect(f.PassedHeaders[1].Id).To(Equal(headerID2))
+			Expect(f.PassedHeaders[2].Id).To(Equal(headerID2))
 			transferRecords, err = t.ValueTransferEventRepository.GetTokenValueTransferRecordsForAccounts(addrs, 6791668)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(transferRecords[addrs[0]])).To(Equal(2))
+			Expect(len(transferRecords[addrs[0]])).To(Equal(4))
 			Expect(len(transferRecords[addrs[1]])).To(Equal(1))
-			Expect(transferRecords[addrs[0]][1].BlockNumber).To(Equal(uint64(6791668)))
-			Expect(transferRecords[addrs[0]][1].Contract).To(Equal("0x0000000000085d4780B73119b644AE5ecd22b376"))
-			Expect(transferRecords[addrs[0]][1].HeaderID).To(Equal(headerID2))
-			Expect(transferRecords[addrs[0]][1].Src).To(Equal("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4"))
-			Expect(transferRecords[addrs[0]][1].Dst).To(Equal("0x009C1E8674038605C5AE33C74f13bC528E1222B5"))
-			Expect(transferRecords[addrs[0]][1].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
+			Expect(transferRecords[addrs[0]][3].BlockNumber).To(Equal(uint64(6791668)))
+			Expect(transferRecords[addrs[0]][3].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(transferRecords[addrs[0]][3].HeaderID).To(Equal(headerID2))
+			Expect(transferRecords[addrs[0]][3].Src).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(transferRecords[addrs[0]][3].Dst).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes()))
+			Expect(transferRecords[addrs[0]][3].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 			Expect(transferRecords[addrs[1]][0].BlockNumber).To(Equal(uint64(6791668)))
-			Expect(transferRecords[addrs[1]][0].Contract).To(Equal("0x0000000000085d4780B73119b644AE5ecd22b376"))
+			Expect(transferRecords[addrs[1]][0].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
 			Expect(transferRecords[addrs[1]][0].HeaderID).To(Equal(headerID2))
-			Expect(transferRecords[addrs[1]][0].Src).To(Equal("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4"))
-			Expect(transferRecords[addrs[1]][0].Dst).To(Equal("0x009C1E8674038605C5AE33C74f13bC528E1222B5"))
+			Expect(transferRecords[addrs[1]][0].Src).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(transferRecords[addrs[1]][0].Dst).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes()))
 			Expect(transferRecords[addrs[1]][0].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 
-			Expect(f.PassedHeaders[2].Id).To(Equal(headerID3))
+			Expect(f.PassedHeaders[3].Id).To(Equal(headerID3))
 			transferRecords, err = t.ValueTransferEventRepository.GetTokenValueTransferRecordsForAccounts(addrs, 6791669)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(len(transferRecords[addrs[0]])).To(Equal(2))
+			Expect(len(transferRecords[addrs[0]])).To(Equal(5))
 			Expect(len(transferRecords[addrs[1]])).To(Equal(2))
+			Expect(transferRecords[addrs[0]][4].BlockNumber).To(Equal(uint64(6791669)))
+			Expect(transferRecords[addrs[0]][4].Contract).To(Equal(common.HexToAddress("0xdAC17F958D2ee523a2206206994597C13D831ec7").Bytes()))
+			Expect(transferRecords[addrs[0]][4].HeaderID).To(Equal(headerID3))
+			Expect(transferRecords[addrs[0]][4].Src).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").Bytes()))
+			Expect(transferRecords[addrs[0]][4].Dst).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(transferRecords[addrs[0]][4].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 			Expect(transferRecords[addrs[1]][1].BlockNumber).To(Equal(uint64(6791669)))
-			Expect(transferRecords[addrs[1]][1].Contract).To(Equal("0x0000000000085d4780B73119b644AE5ecd22b376"))
+			Expect(transferRecords[addrs[1]][1].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
 			Expect(transferRecords[addrs[1]][1].HeaderID).To(Equal(headerID3))
-			Expect(transferRecords[addrs[1]][1].Src).To(Equal("0x009C1E8674038605C5AE33C74f13bC528E1222B5"))
-			Expect(transferRecords[addrs[1]][1].Dst).To(Equal("0x0000000000000000000000000000000000000000"))
+			Expect(transferRecords[addrs[1]][1].Src).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes()))
+			Expect(transferRecords[addrs[1]][1].Dst).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").Bytes()))
 			Expect(transferRecords[addrs[1]][1].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 
 			/*
@@ -198,7 +220,7 @@ var _ = Describe("Transformer", func() {
 			Expect(coinRecord.Value).To(Equal("172845293271568077794"))
 
 			/*
-				It creates token balance records
+				It creates token balance records (as views of the generic value transfer event records)
 			*/
 
 			pgStr := `SELECT address_hash, block_number, value, token_contract_address_hash 
@@ -214,7 +236,7 @@ var _ = Describe("Transformer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
 			Expect(tokenRecord.BlockNumber).To(Equal(int64(6791667)))
-			Expect(tokenRecord.Value).To(Equal("376864137882094974530501285544524832305182681138"))
+			Expect(tokenRecord.Value).To(Equal("753728275764189949061002571089049664610365362276"))
 			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
 
 			// Second header, another event with both our watched addresses => two more records
@@ -225,7 +247,7 @@ var _ = Describe("Transformer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
 			Expect(tokenRecord.BlockNumber).To(Equal(int64(6791668)))
-			Expect(tokenRecord.Value).To(Equal("0"))
+			Expect(tokenRecord.Value).To(Equal("376864137882094974530501285544524832305182681138"))
 			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
 
 			err = db.Get(&tokenRecord, pgStr,
@@ -246,7 +268,7 @@ var _ = Describe("Transformer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
 			Expect(tokenRecord.BlockNumber).To(Equal(int64(6791669)))
-			Expect(tokenRecord.Value).To(Equal("0"))
+			Expect(tokenRecord.Value).To(Equal("376864137882094974530501285544524832305182681138"))
 			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
 
 			err = db.Get(&tokenRecord, pgStr,
@@ -270,8 +292,6 @@ var _ = Describe("Transformer", func() {
 			err = db.Get(trx1, pgStr, headerID2,
 				strings.ToLower(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Hex()))
 			Expect(err).ToNot(HaveOccurred())
-			println("HASH")
-			println(trx1.Hash)
 
 			trx2 := new(core.TransactionModel)
 			err = db.Get(trx2, pgStr, headerID2,
@@ -305,13 +325,12 @@ var _ = Describe("Transformer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			t := transformer.TokenBalanceTransformer{
 				ValueTransferConverter:       vtc,
-				TokenBalanceConverter:        converters.NewTokenBalanceConverter(),
 				HeaderRepository:             repository.NewHeaderRepository(db),
 				Fetcher:                      fetcher.NewFetcher(blockChain),
 				AddressRepository:            r2.NewAddressRepository(db),
+				WatchedContractRepository:    r2.NewWatchedContractRepository(db),
 				ValueTransferEventRepository: r2.NewValueTransferEventRepository(db),
 				CoinBalanceRepository:        r2.NewAccountCoinBalanceRepository(db),
-				TokenBalanceRepository:       r2.NewAccountTokenBalanceRepository(db),
 				AccountPoller:                poller.NewAccountPoller(db, blockChain),
 			}
 			err = t.Init()
@@ -325,13 +344,12 @@ var _ = Describe("Transformer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			t := transformer.TokenBalanceTransformer{
 				ValueTransferConverter:       vtc,
-				TokenBalanceConverter:        converters.NewTokenBalanceConverter(),
 				HeaderRepository:             repository.NewHeaderRepository(db),
 				Fetcher:                      fetcher.NewFetcher(blockChain),
 				AddressRepository:            r2.NewAddressRepository(db),
+				WatchedContractRepository:    r2.NewWatchedContractRepository(db),
 				ValueTransferEventRepository: r2.NewValueTransferEventRepository(db),
 				CoinBalanceRepository:        r2.NewAccountCoinBalanceRepository(db),
-				TokenBalanceRepository:       r2.NewAccountTokenBalanceRepository(db),
 				AccountPoller:                poller.NewAccountPoller(db, blockChain),
 			}
 			err = t.Init()
@@ -356,13 +374,12 @@ var _ = Describe("Transformer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			t := transformer.TokenBalanceTransformer{
 				ValueTransferConverter:       vtc,
-				TokenBalanceConverter:        converters.NewTokenBalanceConverter(),
 				HeaderRepository:             repository.NewHeaderRepository(db),
 				Fetcher:                      fetcher.NewFetcher(blockChain),
 				AddressRepository:            r2.NewAddressRepository(db),
+				WatchedContractRepository:    r2.NewWatchedContractRepository(db),
 				ValueTransferEventRepository: r2.NewValueTransferEventRepository(db),
 				CoinBalanceRepository:        r2.NewAccountCoinBalanceRepository(db),
-				TokenBalanceRepository:       r2.NewAccountTokenBalanceRepository(db),
 				AccountPoller:                poller.NewAccountPoller(db, blockChain),
 			}
 			t.AddressRepository.AddAddress(common.HexToAddress("0x0a2311594059B468c9897338b027C8782398b481"))

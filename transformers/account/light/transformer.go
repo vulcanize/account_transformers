@@ -36,13 +36,12 @@ import (
 type TokenBalanceTransformer struct {
 	Config                       config.ContractConfig
 	ValueTransferConverter       converters.ValueTransferConverter
-	TokenBalanceConverter        converters.TokenBalanceConverter
 	Fetcher                      fetcher.Fetcher
 	HeaderRepository             repository.HeaderRepository
 	AddressRepository            repositories.AddressRepository
+	WatchedContractRepository    repositories.WatchedContractRepository
 	ValueTransferEventRepository repositories.ValueTransferEventRepository
 	CoinBalanceRepository        repositories.AccountCoinBalanceRepository
-	TokenBalanceRepository       repositories.AccountTokenBalanceRepository
 	AccountPoller                poller.AccountPoller
 	NextStart                    int64
 }
@@ -54,21 +53,30 @@ func (tbt TokenBalanceTransformer) NewTransformer(db *postgres.DB, blockChain co
 	}
 	return &TokenBalanceTransformer{
 		ValueTransferConverter:       vtc,
-		TokenBalanceConverter:        converters.NewTokenBalanceConverter(),
 		Fetcher:                      fetcher.NewFetcher(blockChain),
 		HeaderRepository:             repository.NewHeaderRepository(db),
 		AddressRepository:            repositories.NewAddressRepository(db),
+		WatchedContractRepository:    repositories.NewWatchedContractRepository(db),
 		ValueTransferEventRepository: repositories.NewValueTransferEventRepository(db),
 		CoinBalanceRepository:        repositories.NewAccountCoinBalanceRepository(db),
-		TokenBalanceRepository:       repositories.NewAccountTokenBalanceRepository(db),
 		AccountPoller:                poller.NewAccountPoller(db, blockChain),
 	}
 }
 
 func (tbt *TokenBalanceTransformer) Init() error {
-	configuredAccountAddress := constants.AccountAddresses()
-	for _, addr := range configuredAccountAddress {
-		tbt.AddressRepository.AddAddress(addr)
+	configuredAccountAddresses := constants.AccountAddresses()
+	for _, addr := range configuredAccountAddresses {
+		err := tbt.AddressRepository.AddAddress(addr)
+		if err != nil {
+			return err
+		}
+	}
+	configuredTokenAddresses := constants.TokenAddresses()
+	for _, addr := range configuredTokenAddresses {
+		err := tbt.WatchedContractRepository.AddAddress(addr)
+		if err != nil {
+			return err
+		}
 	}
 	tbt.NextStart = constants.StartingBlock()
 	return tbt.HeaderRepository.AddCheckColumn("token_value_transfers")
@@ -80,6 +88,7 @@ func (tbt *TokenBalanceTransformer) Execute() error {
 		return err
 	}
 	// First we need to transform all token value transfer type events into uniform value transfer records
+	// Token balance records are a restricted view on this set of records
 	for _, header := range missingHeaders {
 		tbt.NextStart = header.BlockNumber
 		allLogs, err := tbt.Fetcher.FetchLogs(nil, constants.Topic0s, header)
@@ -118,7 +127,7 @@ func (tbt *TokenBalanceTransformer) Execute() error {
 		return errors.New("no addresses to create records for")
 	}
 
-	// Now we need to go through and process the value transfer records into token balance records for our users
+	// Now we need to go through and collect eth balances and persist them into db records
 	for _, addr := range addresses {
 		columnID := "account_" + addr.Hex()
 		err = tbt.HeaderRepository.AddCheckColumn(columnID)
@@ -135,15 +144,6 @@ func (tbt *TokenBalanceTransformer) Execute() error {
 		}
 		//mostRecentRecordsBlock := checkedButNotRecordedHeaders[0].BlockNumber - 1
 		for _, header := range checkedButNotRecordedHeaders {
-			transferRecords, err := tbt.ValueTransferEventRepository.GetTokenValueTransferRecordsForAccount(addr, 0, header.BlockNumber)
-			if err != nil {
-				return err
-			}
-			tokenBalanceRecords := tbt.TokenBalanceConverter.Convert(addr, transferRecords, header.BlockNumber)
-			err = tbt.TokenBalanceRepository.CreateTokenBalanceRecords(tokenBalanceRecords, header.Id)
-			if err != nil {
-				return err
-			}
 			// Let's also poll the eth balance at this header's blockNumber and create eth balance records
 			coinBalanceRecords, err := tbt.AccountPoller.PollAccounts(addresses, header.BlockNumber, header.Id)
 			if err != nil {
