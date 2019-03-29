@@ -79,7 +79,7 @@ func (br *valueTransferEventRepository) CreateTokenValueTransferRecords(records 
 func (br *valueTransferEventRepository) GetTokenValueTransferRecordsForAccount(address common.Address, firstBlock, lastBlock int64) ([]models.ValueTransferModel, error) {
 	var records []models.ValueTransferModel
 	pgStr := `SELECT header_id, name, block_number, dst, src, amount, contract, log_idx, tx_idx, raw_log FROM accounts.token_value_transfers
-			WHERE (dst = $1 OR src = $1) AND block_number BETWEEN $2 AND $3`
+			WHERE (dst = $1 OR src = $1) AND block_number BETWEEN $2 AND $3 ORDER BY block_number`
 	rows, err := br.DB.Queryx(pgStr, address.Hex(), firstBlock, lastBlock)
 	if err != nil {
 		return nil, err
@@ -104,9 +104,9 @@ func (br *valueTransferEventRepository) GetTokenValueTransferRecordsForAccount(a
 func (br *valueTransferEventRepository) GetTokenValueTransferRecordsForAccounts(addresses []common.Address, lastBlock int64) (map[common.Address][]models.ValueTransferModel, error) {
 	mappedRecords := make(map[common.Address][]models.ValueTransferModel)
 	pgStr := `SELECT header_id, name, block_number, dst, src, amount, contract, log_idx, tx_idx, raw_log FROM accounts.token_value_transfers
-			WHERE (dst = $1 OR src = $1) AND block_number <= $2`
+			WHERE (dst = $1 OR src = $1) AND block_number <= $2 ORDER BY block_number`
 	for _, addr := range addresses {
-		rows, err := br.DB.Queryx(pgStr, addr.Hex(), lastBlock)
+		rows, err := br.DB.Queryx(pgStr, addr.Bytes(), lastBlock)
 		if err != nil {
 			return nil, err
 		}

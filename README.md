@@ -1,9 +1,12 @@
 [VulcanizeDB](https://github.com/vulcanize/maker-vulcanizedb) transformers for watching ETH and token value transfers
 
-This repo contains transformers for indexing of ETH and token balances for account addresses. [This](https://github.com/vulcanize/account_transformers/tree/master/transformers/account/light) transformer 
-works by filtering and indexing all token transfer events (of a set of [known types](https://github.com/vulcanize/account_transformers/tree/master/transformers/account/shared/constants)) from all contract addresses,
-compiling this information into token balance records for provided account addresses. It then polls an archival Eth node to
-retrieve balances for these accounts and generate eth balance records.
+This repo contains transformers for indexing of ETH and token balances for account addresses.
+
+[This](https://github.com/vulcanize/account_transformers/tree/master/transformers/account/light) 
+transformer works by filtering through all eth logs that have one of [these topic0](https://github.com/vulcanize/account_transformers/blob/master/transformers/account/shared/constants/signatures.go#L56).
+These events are unpacked and converted to generic "Value Transfer" [records](https://github.com/vulcanize/account_transformers/blob/master/transformers/account/light/models/model.go#L19).
+Token balances for user accounts are then constructed  as views on these records.
+It then polls an archival Eth node to retrieve balances for these accounts and generate eth balance records.
 
 # Setup 
 
@@ -27,7 +30,11 @@ Once `lightSync` has begun, we can run the `composeAndExecute` command to compos
 do so, we use a normal `compose` [config](https://github.com/vulcanize/maker-vulcanizedb#contractwatcher) with two additional parameter maps:
 
 ```toml
-[equivalents]
+[contract]
+    addresses = [
+        "0x0000000000085d4780B73119b644AE5ecd22b376",
+    ]
+    [contract.equivalents]
     0x0000000000085d4780B73119b644AE5ecd22b376 = [
        "0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E"
     ]
@@ -39,19 +46,32 @@ do so, we use a normal `compose` [config](https://github.com/vulcanize/maker-vul
         "0x009C1E8674038605C5AE33C74f13bC528E1222B5"
     ]
 ```
+`contract.addresses` are a list of the token addresses we want to track balances for, these addresses are used create token balance views.
+This can be updated at runtime by adding new contract addresses to the `accounts.watched_contracts` table in Postgres:
 
-`equivalents` is used to manually map contract addresses which represent the same token and need to be tracked
-as such. This is the case as in the example with TrueUSD, where `0x0000000000085d4780B73119b644AE5ecd22b376` is a proxy
-contract that was upgraded to from the direct implementation at `0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E`, meaning events
-before the upgrade were emitted from `0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E` whereas they are now emitted from `0x0000000000085d4780B73119b644AE5ecd22b376`
-and we need to know to treat them equivalently in order to properly index TrueUSD token balances.
+```postgresql
+CREATE TABLE accounts.watched_contracts (
+  contract BYTEA PRIMARY KEY
+);
+```
+`contract.equivalents` is used to manually map contract addresses which represent the same token and need to be tracked
+as such. For example, TrueUSD as shown above has a proxy contract `0x0000000000085d4780B73119b644AE5ecd22b376`
+contract that was recently upgraded to from a direct implementation at `0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E`. 
+These two addresses do not emit each other's events and so to track the balance of TrueUSD we are configuring our
+transformer to watch events emitted from both these addresses as though they all belong to `0x0000000000085d4780B73119b644AE5ecd22b376`.
 
 `account.start` is used to specify when to begin watching events and producing token and eth balance records for the user accounts,
 this needs to be set to a block lower than the deployment block of any tokens we want to track. Additionally, this block number must fall within
 the contiguous set of unchecked_headers (this is important if we need to restart a sync, we will need to restart from the lowest unchecked header)
 
 `account.addresses` is used to specify which user account addresses we want to track and index ETH balance and token balance
-records for. This can also be updated at runtime by adding new addresses to the `accounts.addresses` table in Postgres.
+records for. This can be updated at runtime by adding new addresses to the `accounts.addresses` table in Postgres: 
+
+```postgresql
+CREATE TABLE accounts.addresses (
+  address BYTEA PRIMARY KEY
+);
+```
 
 Currently, this config's `ipcPath` needs to point to an archival node endpoint in order to track ETH balances, this will be deprecated
 by the use of state diff data in the near future.
@@ -59,6 +79,7 @@ by the use of state diff data in the near future.
 To expose the transformed data over Postgraphile, we need to modify our Postgraphile [config.ts](https://github.com/vulcanize/maker-vulcanizedb/blob/staging/postgraphile/src/server/config.ts#L42)
 and also [config.spec.ts](https://github.com/vulcanize/maker-vulcanizedb/blob/staging/postgraphile/spec/server/config.spec.ts) to include the "accounts" schema
 e.g. (`["public", "accounts"]`). After this, we should be able to expose graphQL endpoints as usual.
+
 
 # Output
 
@@ -81,8 +102,28 @@ CREATE TABLE accounts.token_value_transfers (
 );
 ```
 
-For each user account it is configured with, it then filters through these at a given blockheight to tally up token
-balances for those accounts and persist them as token balance records of the form:
+A view on a join of these records with the `accounts.addresses` table, the `accounts.watched_contracts` table, and
+the `public.headers` table is used to construct our users' token balance records:
+
+```postgresql
+CREATE OR REPLACE VIEW accounts.address_token_balances AS
+  SELECT
+    accounts.addresses.address AS address_hash,
+    accounts.watched_contracts.contract AS token_contract_address_hash,
+    public.headers.block_number,
+    ((SELECT COALESCE(SUM(amount),0) FROM accounts.token_value_transfers
+                        WHERE accounts.token_value_transfers.block_number <= public.headers.block_number
+                        AND accounts.token_value_transfers.dst = accounts.addresses.address
+                        AND accounts.token_value_transfers.contract = accounts.watched_contracts.contract) -
+    (SELECT COALESCE(SUM(amount),0) FROM accounts.token_value_transfers
+                        WHERE accounts.token_value_transfers.block_number <= public.headers.block_number
+                        AND accounts.token_value_transfers.src = accounts.addresses.address
+                        AND accounts.token_value_transfers.contract = accounts.watched_contracts.contract)) AS "value"
+  FROM accounts.token_value_transfers, accounts.addresses, public.headers, accounts.watched_contracts
+  GROUP BY accounts.addresses.address, accounts.watched_contracts.contract, public.headers.block_number;
+```
+
+Which produces a view equivalent to the below table:
 
 ```postgresql
 CREATE TABLE accounts.address_token_balances (
@@ -91,9 +132,6 @@ CREATE TABLE accounts.address_token_balances (
   block_number                BIGINT NOT NULL,
   token_contract_address_hash BYTEA NOT NULL,
   value                       NUMERIC,
-  value_fetched_at            TIMESTAMP WITHOUT TIME ZONE,
-  inserted_at                 TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-  updated_at                  TIMESTAMP WITHOUT TIME ZONE,
   UNIQUE (address_hash, block_number, token_contract_address_hash)
 );
 ```
@@ -149,3 +187,6 @@ CREATE TABLE light_sync_receipts(
 );
 ```
 
+# Contributing
+If you notice a value transfer type event is missing from the [ones we are already tracking](https://github.com/vulcanize/account_transformers/blob/master/transformers/account/shared/constants/signatures.go#L56),
+please feel free to submit a PR to introduce the event or submit an issue to note it for inclusion.

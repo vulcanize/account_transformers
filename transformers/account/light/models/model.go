@@ -20,10 +20,10 @@ type ValueTransferModel struct {
 	HeaderID         int64 `db:"header_id"`
 	Name             string
 	BlockNumber      uint64 `db:"block_number"`
-	Dst              string
-	Src              string
+	Dst              []byte
+	Src              []byte
 	Amount           string
-	Contract         string
+	Contract         []byte
 	LogIndex         uint   `db:"log_idx"`
 	TransactionIndex uint   `db:"tx_idx"`
 	Raw              []byte `db:"raw_log"`

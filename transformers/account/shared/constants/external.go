@@ -64,6 +64,19 @@ func EquivalentTokenAddressesMapping() map[common.Address][]common.Address {
 	return addrMap
 }
 
+func tokenAddresses() []string {
+	return getStringSlice("token.addresses")
+}
+
+func TokenAddresses() []common.Address {
+	strAddrs := tokenAddresses()
+	addrs := make([]common.Address, 0, len(strAddrs))
+	for _, strAddr := range strAddrs {
+		addrs = append(addrs, common.HexToAddress(strAddr))
+	}
+	return addrs
+}
+
 func accountAddresses() []string {
 	return getStringSlice("account.addresses")
 }
