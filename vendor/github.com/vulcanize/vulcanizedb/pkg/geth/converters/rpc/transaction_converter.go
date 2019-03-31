@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"log"
 	"math/big"
 	"strings"
@@ -70,7 +71,7 @@ func (converter *RpcTransactionConverter) ConvertRpcTransactionsToModels(transac
 			return nil, txIndexErr
 		}
 		transactionModel := core.TransactionModel{
-			Data:     transaction.Payload,
+			Data:     txData.Payload,
 			From:     transaction.From,
 			GasLimit: txData.GasLimit,
 			GasPrice: txData.Price.Int64(),
@@ -126,7 +127,10 @@ func (rtc *RpcTransactionConverter) appendReceiptToTransaction(transaction core.
 	if err != nil {
 		return transaction, err
 	}
-	receipt := vulcCommon.ToCoreReceipt(gethReceipt)
+	receipt, err := vulcCommon.ToCoreReceipt(gethReceipt)
+	if err != nil {
+		return transaction, err
+	}
 	transaction.Receipt = receipt
 	return transaction, nil
 }
@@ -187,7 +191,7 @@ func getTransactionData(transaction core.RpcTransaction) (transactionData, error
 		GasLimit:     gasLimit.Uint64(),
 		Recipient:    &recipient,
 		Amount:       amount,
-		Payload:      transaction.Payload,
+		Payload:      hexutil.MustDecode(transaction.Payload),
 		V:            v,
 		R:            r,
 		S:            s,

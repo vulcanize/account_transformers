@@ -19,8 +19,10 @@ package repositories
 import (
 	"database/sql"
 	"errors"
+
 	"github.com/jmoiron/sqlx"
 	log "github.com/sirupsen/logrus"
+
 	"github.com/vulcanize/vulcanizedb/pkg/core"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 )
@@ -50,23 +52,28 @@ func (repository HeaderRepository) CreateOrUpdateHeader(header core.Header) (int
 	return 0, ErrValidHeaderExists
 }
 
-func (repository HeaderRepository) CreateTransaction(headerID int64, transaction core.TransactionModel) error {
-	_, err := repository.database.Exec(`INSERT INTO public.light_sync_transactions
-		(header_id, hash, gaslimit, gasprice, input_data, nonce, raw, tx_from, tx_index, tx_to, "value") 
+func (repository HeaderRepository) CreateTransactions(headerID int64, transactions []core.TransactionModel) error {
+	for _, transaction := range transactions {
+		_, err := repository.database.Exec(`INSERT INTO public.light_sync_transactions
+		(header_id, hash, gas_limit, gas_price, input_data, nonce, raw, tx_from, tx_index, tx_to, "value") 
 		VALUES ($1, $2, $3::NUMERIC, $4::NUMERIC, $5, $6::NUMERIC, $7, $8, $9::NUMERIC, $10, $11::NUMERIC)
 		ON CONFLICT DO NOTHING`, headerID, transaction.Hash, transaction.GasLimit, transaction.GasPrice,
-		transaction.Data, transaction.Nonce, transaction.Raw, transaction.From, transaction.TxIndex, transaction.To,
-		transaction.Value)
-	return err
+			transaction.Data, transaction.Nonce, transaction.Raw, transaction.From, transaction.TxIndex, transaction.To,
+			transaction.Value)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (repository HeaderRepository) CreateTransactionInTx(tx *sqlx.Tx, headerID int64, transaction core.TransactionModel) (int64, error) {
 	var txId int64
 	err := tx.QueryRowx(`INSERT INTO public.light_sync_transactions
-		(header_id, hash, gaslimit, gasprice, input_data, nonce, raw, tx_from, tx_index, tx_to, "value") 
+		(header_id, hash, gas_limit, gas_price, input_data, nonce, raw, tx_from, tx_index, tx_to, "value")
 		VALUES ($1, $2, $3::NUMERIC, $4::NUMERIC, $5, $6::NUMERIC, $7, $8, $9::NUMERIC, $10, $11::NUMERIC)
 		ON CONFLICT (header_id, hash) DO UPDATE 
-		SET (gaslimit, gasprice, input_data, nonce, raw, tx_from, tx_index, tx_to, "value") = ($3::NUMERIC, $4::NUMERIC, $5, $6::NUMERIC, $7, $8, $9::NUMERIC, $10, $11::NUMERIC)
+		SET (gas_limit, gas_price, input_data, nonce, raw, tx_from, tx_index, tx_to, "value") = ($3::NUMERIC, $4::NUMERIC, $5, $6::NUMERIC, $7, $8, $9::NUMERIC, $10, $11::NUMERIC)
 		RETURNING id`,
 		headerID, transaction.Hash, transaction.GasLimit, transaction.GasPrice,
 		transaction.Data, transaction.Nonce, transaction.Raw, transaction.From,
@@ -78,24 +85,15 @@ func (repository HeaderRepository) CreateTransactionInTx(tx *sqlx.Tx, headerID i
 	return txId, err
 }
 
-func (repository HeaderRepository) CreateReceipt(headerID, transactionID int64, receipt core.Receipt) error {
-	_, err := repository.database.Exec(`INSERT INTO public.light_sync_receipts
-               (header_id, transaction_id, contract_address, cumulative_gas_used, gas_used, state_root, status, tx_hash)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-               ON CONFLICT DO NOTHING`,
-		headerID, transactionID, receipt.ContractAddress, receipt.CumulativeGasUsed, receipt.GasUsed, receipt.StateRoot, receipt.Status, receipt.TxHash)
-	return err
-}
-
 func (repository HeaderRepository) CreateReceiptInTx(tx *sqlx.Tx, headerID, transactionID int64, receipt core.Receipt) (int64, error) {
 	var receiptId int64
 	err := tx.QueryRowx(`INSERT INTO public.light_sync_receipts
-               (header_id, transaction_id, contract_address, cumulative_gas_used, gas_used, state_root, status, tx_hash)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+               (header_id, transaction_id, contract_address, cumulative_gas_used, gas_used, state_root, status, tx_hash, rlp)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 			   ON CONFLICT (header_id, transaction_id) DO UPDATE
-			   SET (contract_address, cumulative_gas_used, gas_used, state_root, status, tx_hash) = ($3, $4::NUMERIC, $5::NUMERIC, $6, $7, $8)
+			   SET (contract_address, cumulative_gas_used, gas_used, state_root, status, tx_hash, rlp) = ($3, $4::NUMERIC, $5::NUMERIC, $6, $7, $8, $9)
                RETURNING id`,
-		headerID, transactionID, receipt.ContractAddress, receipt.CumulativeGasUsed, receipt.GasUsed, receipt.StateRoot, receipt.Status, receipt.TxHash).Scan(&receiptId)
+		headerID, transactionID, receipt.ContractAddress, receipt.CumulativeGasUsed, receipt.GasUsed, receipt.StateRoot, receipt.Status, receipt.TxHash, receipt.Rlp).Scan(&receiptId)
 	if err != nil {
 		log.Error("header_repository: error inserting receipt: ", err)
 		return receiptId, err

@@ -19,7 +19,6 @@ package integration_tests
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/spf13/viper"
 	"plugin"
 
 	"github.com/vulcanize/vulcanizedb/libraries/shared/transformer"
@@ -67,8 +66,6 @@ var _ = Describe("Plugin test", func() {
 	var bc core.BlockChain
 	var db *postgres.DB
 	var hr repositories.HeaderRepository
-	viper.SetConfigName("integration")
-	viper.AddConfigPath("$GOPATH/src/github.com/vulcanize/account_transformers/environments/")
 
 	Describe("Account Transformer Plugin", func() {
 		BeforeEach(func() {
