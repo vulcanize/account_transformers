@@ -1,6 +1,7 @@
 -- +goose Up
 CREATE TABLE accounts.address_coin_balances (
   id                          SERIAL PRIMARY KEY,
+  header_id                   INTEGER NOT NULL REFERENCES headers (id) ON DELETE CASCADE,
   address_hash                BYTEA NOT NULL,
   block_number                BIGINT NOT NULL,
   value                       NUMERIC(100,0),

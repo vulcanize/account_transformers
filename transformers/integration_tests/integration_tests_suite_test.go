@@ -19,11 +19,11 @@ package integration_tests_test
 import (
 	"github.com/spf13/viper"
 	"io/ioutil"
+	"log"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	log "github.com/sirupsen/logrus"
 )
 
 func TestIntegration(t *testing.T) {
