@@ -127,7 +127,6 @@ Which produces a view equivalent to the below table:
 
 ```postgresql
 CREATE TABLE accounts.address_token_balances (
-  id                          SERIAL PRIMARY KEY,
   address_hash                BYTEA NOT NULL,
   block_number                BIGINT NOT NULL,
   token_contract_address_hash BYTEA NOT NULL,
@@ -142,6 +141,7 @@ balance records of the form:
 ```postgresql
 CREATE TABLE accounts.address_coin_balances (
   id                          SERIAL PRIMARY KEY,
+  header_id                   INTEGER NOT NULL REFERENCES headers (id) ON DELETE CASCADE,
   address_hash                BYTEA NOT NULL,
   block_number                BIGINT NOT NULL,
   value                       NUMERIC(100,0),
