@@ -47,10 +47,10 @@ do so, we use a normal `compose` [config](https://github.com/vulcanize/maker-vul
     ]
 ```
 `contract.addresses` are a list of the token addresses we want to track balances for, these addresses are used create token balance views.
-This can be updated at runtime by adding new contract addresses to the `accounts.watched_contracts` table in Postgres:
+This can be updated at runtime by adding new contract addresses to the `accounts.contract_addresses` table in Postgres:
 
 ```postgresql
-CREATE TABLE accounts.watched_contracts (
+CREATE TABLE accounts.contract_addresses (
   contract BYTEA PRIMARY KEY
 );
 ```
@@ -102,25 +102,25 @@ CREATE TABLE accounts.token_value_transfers (
 );
 ```
 
-A view on a join of these records with the `accounts.addresses` table, the `accounts.watched_contracts` table, and
+A view on a join of these records with the `accounts.addresses` table, the `accounts.contract_addresses` table, and
 the `public.headers` table is used to construct our users' token balance records:
 
 ```postgresql
 CREATE OR REPLACE VIEW accounts.address_token_balances AS
   SELECT
     accounts.addresses.address AS address_hash,
-    accounts.watched_contracts.contract AS token_contract_address_hash,
+    accounts.contract_addresses.contract AS token_contract_address_hash,
     public.headers.block_number,
     ((SELECT COALESCE(SUM(amount),0) FROM accounts.token_value_transfers
                         WHERE accounts.token_value_transfers.block_number <= public.headers.block_number
                         AND accounts.token_value_transfers.dst = accounts.addresses.address
-                        AND accounts.token_value_transfers.contract = accounts.watched_contracts.contract) -
+                        AND accounts.token_value_transfers.contract = accounts.contract_addresses.contract) -
     (SELECT COALESCE(SUM(amount),0) FROM accounts.token_value_transfers
                         WHERE accounts.token_value_transfers.block_number <= public.headers.block_number
                         AND accounts.token_value_transfers.src = accounts.addresses.address
-                        AND accounts.token_value_transfers.contract = accounts.watched_contracts.contract)) AS "value"
-  FROM accounts.token_value_transfers, accounts.addresses, public.headers, accounts.watched_contracts
-  GROUP BY accounts.addresses.address, accounts.watched_contracts.contract, public.headers.block_number;
+                        AND accounts.token_value_transfers.contract = accounts.contract_addresses.contract)) AS "value"
+  FROM accounts.token_value_transfers, accounts.addresses, public.headers, accounts.contract_addresses
+  GROUP BY accounts.addresses.address, accounts.contract_addresses.contract, public.headers.block_number;
 ```
 
 Which produces a view equivalent to the below table:
