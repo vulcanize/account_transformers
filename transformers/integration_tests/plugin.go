@@ -17,11 +17,10 @@
 package integration_tests
 
 import (
-	"plugin"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
+	"plugin"
 
 	"github.com/vulcanize/vulcanizedb/libraries/shared/transformer"
 	"github.com/vulcanize/vulcanizedb/libraries/shared/watcher"
@@ -159,6 +158,10 @@ var _ = Describe("Plugin test", func() {
 				err = rows.Err()
 				Expect(err).ToNot(HaveOccurred())
 				rows.Close()
+
+				// This init at the end is done to send a quit message to the getBalanceRecord goroutine
+				err = w.Transformers[0].Init()
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 	})

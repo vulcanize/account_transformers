@@ -23,6 +23,6 @@ import (
 	"github.com/vulcanize/account_transformers/transformers/account/light"
 )
 
-var ContractTransformerInitializer transformer.ContractTransformerInitializer = light.TokenBalanceTransformer{
+var ContractTransformerInitializer transformer.ContractTransformerInitializer = light.AccountTransformer{
 	Config: config.MainnetAccountConfig,
 }.NewTransformer

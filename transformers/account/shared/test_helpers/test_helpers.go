@@ -68,9 +68,6 @@ func TearDown(db *postgres.DB) {
 	_, err = tx.Exec(`CREATE TABLE checked_headers (id SERIAL PRIMARY KEY, header_id INTEGER UNIQUE NOT NULL REFERENCES headers (id) ON DELETE CASCADE);`)
 	Expect(err).NotTo(HaveOccurred())
 
-	_, err = tx.Exec(`DELETE FROM accounts.addresses`)
-	Expect(err).NotTo(HaveOccurred())
-
 	_, err = tx.Exec(`DELETE FROM accounts.token_value_transfers`)
 	Expect(err).NotTo(HaveOccurred())
 

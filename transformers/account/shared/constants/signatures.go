@@ -53,6 +53,8 @@ var eventSignatures = map[string]Label{
 	"0x3a54236f3fa142aa8af68c2520b5280d6ad1c3b751f857990552c0f9ef326f37": NewTokenGrant,
 }
 
+// Add support for event Generate(address indexed _recipient, address indexed _caller, uint256 _recipientTokenAmount, uint256 _callerTokenAmount, uint256 _block);
+
 var Topic0s = []common.Hash{
 	common.HexToHash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"), // Transfer
 	common.HexToHash("0x930a61a57a70a73c2a503615b87e2e54fe5b9cdeacda518270b852296ab1a377"), // Transfer

@@ -87,7 +87,7 @@ func (c *valueTransferConverter) unpack(log types.Log, headerID int64, topicCoun
 	abiEventName := c.boundEvent.Names[topicCount-1]
 	err := c.boundContract.UnpackLogIntoMap(unpackMap, abiEventName, log)
 	if err != nil {
-		return models.ValueTransferModel{}, errors.New(fmt.Sprintf("unable to unpack %s: %v", abiEventName, err))
+		return models.ValueTransferModel{}, fmt.Errorf("unable to unpack event %s\r\nlog: %v\r\nerror: %v", abiEventName, log, err)
 	}
 	raw, err := json.Marshal(log)
 	if err != nil {
@@ -99,19 +99,19 @@ func (c *valueTransferConverter) unpack(log types.Log, headerID int64, topicCoun
 	if unpackMap["from"] != nil {
 		src, ok = unpackMap["from"].(common.Address)
 		if !ok {
-			return models.ValueTransferModel{}, errors.New(fmt.Sprintf("`From` field in unpacked map should be of type %T but is of type %T", log.Address, unpackMap["from"]))
+			return models.ValueTransferModel{}, fmt.Errorf("`From` field in unpacked map should be of type %T but is of type %T", log.Address, unpackMap["from"])
 		}
 	}
 	if unpackMap["to"] != nil {
 		dst, ok = unpackMap["to"].(common.Address)
 		if !ok {
-			return models.ValueTransferModel{}, errors.New(fmt.Sprintf("`To` field in unpacked map should be of type %T but is of type %T", log.Address, unpackMap["to"]))
+			return models.ValueTransferModel{}, fmt.Errorf("`To` field in unpacked map should be of type %T but is of type %T", log.Address, unpackMap["to"])
 		}
 	}
 	if unpackMap["value"] != nil {
 		amount, ok = unpackMap["value"].(*big.Int)
 		if !ok {
-			return models.ValueTransferModel{}, errors.New(fmt.Sprintf("`Amount` field in unpacked map should be of type %T but is of type %T", big.NewInt(0), unpackMap["value"]))
+			return models.ValueTransferModel{}, fmt.Errorf("`Amount` field in unpacked map should be of type %T but is of type %T", big.NewInt(0), unpackMap["value"])
 		}
 	}
 	return models.ValueTransferModel{
