@@ -17,13 +17,13 @@
 package integration_tests
 
 import (
-	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/fetcher"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/fetcher"
 	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/core"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
@@ -59,7 +59,7 @@ var _ = Describe("Transformer", func() {
 
 	Describe("Init", func() {
 		It("Doesn't do anything; fills in interface", func() {
-			ti := transformer.TokenBalanceTransformer{
+			ti := transformer.AccountTransformer{
 				Config: config.MainnetAccountConfig,
 			}
 			t := ti.NewTransformer(db, blockChain)
@@ -92,7 +92,7 @@ var _ = Describe("Transformer", func() {
 		It("With Mock Fetcher: transforms value transfer events into account records", func() {
 			vtc, err := converters.NewValueTransferConverter(c2.CombinedABI, c2.EquivalentTokenAddressesMapping())
 			Expect(err).ToNot(HaveOccurred())
-			t := transformer.TokenBalanceTransformer{
+			t := transformer.AccountTransformer{
 				ValueTransferConverter:       vtc,
 				HeaderRepository:             repository.NewHeaderRepository(db),
 				AddressRepository:            r2.NewAddressRepository(db),
@@ -100,6 +100,7 @@ var _ = Describe("Transformer", func() {
 				ValueTransferEventRepository: r2.NewValueTransferEventRepository(db),
 				CoinBalanceRepository:        r2.NewAccountCoinBalanceRepository(db),
 				AccountPoller:                poller.NewAccountPoller(db, blockChain),
+				QuitChannel:                  make(chan bool),
 			}
 			f := mocks.MockFetcher{}
 			f.Logs = fakes.FakeLogs
@@ -181,7 +182,8 @@ var _ = Describe("Transformer", func() {
 			/*
 				It creates eth balance records
 			*/
-
+			// Sending a quit signal will block until the eth balance record creation finishes its current default `select` cycle and finds the quit signal in the next loop
+			t.QuitChannel <- true
 			var coinRecord shared.CoinBalanceRecord
 			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes(), 6791667)
 			Expect(err).ToNot(HaveOccurred())
@@ -323,7 +325,7 @@ var _ = Describe("Transformer", func() {
 		It("If `next start` isn't contiguous with the headers we have available, we can't do anything", func() {
 			vtc, err := converters.NewValueTransferConverter(c2.CombinedABI, c2.EquivalentTokenAddressesMapping())
 			Expect(err).ToNot(HaveOccurred())
-			t := transformer.TokenBalanceTransformer{
+			t := transformer.AccountTransformer{
 				ValueTransferConverter:       vtc,
 				HeaderRepository:             repository.NewHeaderRepository(db),
 				Fetcher:                      fetcher.NewFetcher(blockChain),
@@ -332,17 +334,19 @@ var _ = Describe("Transformer", func() {
 				ValueTransferEventRepository: r2.NewValueTransferEventRepository(db),
 				CoinBalanceRepository:        r2.NewAccountCoinBalanceRepository(db),
 				AccountPoller:                poller.NewAccountPoller(db, blockChain),
+				QuitChannel:                  make(chan bool),
 			}
 			err = t.Init()
 			Expect(err).ToNot(HaveOccurred())
 			err = t.Execute()
 			Expect(err).ToNot(HaveOccurred())
+			t.QuitChannel <- true
 		})
 
 		It("With real fetcher: transforms value transfer events into account records", func() {
 			vtc, err := converters.NewValueTransferConverter(c2.CombinedABI, c2.EquivalentTokenAddressesMapping())
 			Expect(err).ToNot(HaveOccurred())
-			t := transformer.TokenBalanceTransformer{
+			t := transformer.AccountTransformer{
 				ValueTransferConverter:       vtc,
 				HeaderRepository:             repository.NewHeaderRepository(db),
 				Fetcher:                      fetcher.NewFetcher(blockChain),
@@ -351,11 +355,13 @@ var _ = Describe("Transformer", func() {
 				ValueTransferEventRepository: r2.NewValueTransferEventRepository(db),
 				CoinBalanceRepository:        r2.NewAccountCoinBalanceRepository(db),
 				AccountPoller:                poller.NewAccountPoller(db, blockChain),
+				QuitChannel:                  make(chan bool),
 			}
 			err = t.Init()
 			Expect(err).ToNot(HaveOccurred())
 			err = t.Execute()
 			Expect(err).ToNot(HaveOccurred())
+			t.QuitChannel <- true
 		})
 	})
 
@@ -372,7 +378,7 @@ var _ = Describe("Transformer", func() {
 		It("With real fetcher: transforms value transfer events into account records", func() {
 			vtc, err := converters.NewValueTransferConverter(c2.CombinedABI, c2.EquivalentTokenAddressesMapping())
 			Expect(err).ToNot(HaveOccurred())
-			t := transformer.TokenBalanceTransformer{
+			t := transformer.AccountTransformer{
 				ValueTransferConverter:       vtc,
 				HeaderRepository:             repository.NewHeaderRepository(db),
 				Fetcher:                      fetcher.NewFetcher(blockChain),
@@ -381,6 +387,7 @@ var _ = Describe("Transformer", func() {
 				ValueTransferEventRepository: r2.NewValueTransferEventRepository(db),
 				CoinBalanceRepository:        r2.NewAccountCoinBalanceRepository(db),
 				AccountPoller:                poller.NewAccountPoller(db, blockChain),
+				QuitChannel:                  make(chan bool),
 			}
 			t.AddressRepository.AddAddress(common.HexToAddress("0x0a2311594059B468c9897338b027C8782398b481"))
 			t.AddressRepository.AddAddress(common.HexToAddress("0x7d03D189843df859abDDc7533B31cD8f6CeB2CeD"))
@@ -389,6 +396,7 @@ var _ = Describe("Transformer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			err = t.Execute()
 			Expect(err).ToNot(HaveOccurred())
+			t.QuitChannel <- true
 		})
 	})
 })

@@ -26,7 +26,7 @@ import (
 )
 
 type AccountCoinBalanceRepository interface {
-	CreateCoinBalanceRecord(balanceRecords []shared.CoinBalanceRecord, headerID int64) error
+	CreateCoinBalanceRecords(balanceRecords []shared.CoinBalanceRecord) error
 }
 
 type accountCoinBalanceRepository struct {
@@ -39,7 +39,7 @@ func NewAccountCoinBalanceRepository(db *postgres.DB) *accountCoinBalanceReposit
 	}
 }
 
-func (acbr *accountCoinBalanceRepository) CreateCoinBalanceRecord(balanceRecords []shared.CoinBalanceRecord, headerID int64) error {
+func (acbr *accountCoinBalanceRepository) CreateCoinBalanceRecords(balanceRecords []shared.CoinBalanceRecord) error {
 	tx, err := acbr.DB.Beginx()
 	if err != nil {
 		return err
@@ -48,15 +48,17 @@ func (acbr *accountCoinBalanceRepository) CreateCoinBalanceRecord(balanceRecords
 			(address_hash,
 			block_number,
 			value,
-			inserted_at) VALUES
-			($1, $2, $3, $4)
+			inserted_at,
+			header_id) VALUES
+			($1, $2, $3, $4, $5)
 			ON CONFLICT (address_hash, block_number)
 			DO UPDATE SET
 			(value,
-			updated_at) = ($3, $4)`
+			updated_at,
+			header_id) = ($3, $4, $5)`
 	for _, record := range balanceRecords {
 		now := time.Now()
-		_, err := tx.Exec(pgStr, record.Address, record.BlockNumber, utilities.NullToZero(record.Value), now)
+		_, err := tx.Exec(pgStr, record.Address, record.BlockNumber, utilities.NullToZero(record.Value), now, record.HeaderID)
 		if err != nil {
 			tx.Rollback()
 			return err

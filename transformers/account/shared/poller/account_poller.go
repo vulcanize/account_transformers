@@ -17,20 +17,20 @@
 package poller
 
 import (
-	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
-	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres/repositories"
 	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/vulcanize/vulcanizedb/pkg/core"
+	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
+	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres/repositories"
 
 	"github.com/vulcanize/account_transformers/transformers/account/shared"
 )
 
 type AccountPoller interface {
-	PollAccounts(accounts []common.Address, blockNumber, headerID int64) ([]shared.CoinBalanceRecord, error)
+	PollAccount(addr common.Address, headers []core.Header) ([]shared.CoinBalanceRecord, error)
 }
 
 type accountPoller struct {
@@ -49,22 +49,23 @@ func NewAccountPoller(db *postgres.DB, bc core.BlockChain) *accountPoller {
 	}
 }
 
-func (ap *accountPoller) PollAccounts(accounts []common.Address, blockNumber, headerID int64) ([]shared.CoinBalanceRecord, error) {
-	balanceRecords := make([]shared.CoinBalanceRecord, 0)
-	for _, addr := range accounts {
+func (ap *accountPoller) PollAccount(addr common.Address, headers []core.Header) ([]shared.CoinBalanceRecord, error) {
+	balanceRecords := make([]shared.CoinBalanceRecord, 0, len(headers))
+	for _, header := range headers {
 		if ap.balanceCache[addr] == nil {
 			ap.balanceCache[addr] = big.NewInt(0)
 		}
 		record := shared.CoinBalanceRecord{
-			BlockNumber: blockNumber,
+			BlockNumber: header.BlockNumber,
 			Address:     addr.Bytes(),
+			HeaderID:    header.Id,
 		}
-		balance, err := ap.blockChain.GetAccountBalance(addr, big.NewInt(blockNumber))
+		balance, err := ap.blockChain.GetAccountBalance(addr, big.NewInt(header.BlockNumber))
 		if err != nil {
 			return nil, err
 		}
 		if ap.balanceCache[addr].String() != balance.String() {
-			err = ap.pollTx(addr, blockNumber, headerID)
+			err = ap.pollTx(addr, header.BlockNumber, header.Id)
 			if err != nil {
 				return nil, err
 			}
@@ -73,6 +74,7 @@ func (ap *accountPoller) PollAccounts(accounts []common.Address, blockNumber, he
 		record.Value = balance.String()
 		balanceRecords = append(balanceRecords, record)
 	}
+
 	return balanceRecords, nil
 }
 
