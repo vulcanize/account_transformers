@@ -18,6 +18,7 @@ package light
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/vulcanize/vulcanizedb/libraries/shared/transformer"
@@ -44,7 +45,6 @@ type AccountTransformer struct {
 	CoinBalanceRepository        repositories.AccountCoinBalanceRepository
 	AccountPoller                poller.AccountPoller
 	NextStart                    int64
-	initialized                  bool
 	QuitChannel                  chan bool
 }
 
@@ -63,10 +63,6 @@ func (tbt AccountTransformer) NewTransformer(db *postgres.DB, blockChain core.Bl
 
 func (tbt *AccountTransformer) Init() error {
 	var err error
-	// Stop createBalanceRecords goroutine if it is already running, so that we can restart it with new init
-	if tbt.initialized {
-		tbt.QuitChannel <- true
-	}
 	// Get the list of account addresses we want to create records for from the config and add them to Postgres
 	configuredAccountAddresses := constants.AccountAddresses()
 	for _, addr := range configuredAccountAddresses {
@@ -95,12 +91,28 @@ func (tbt *AccountTransformer) Init() error {
 }
 
 func (tbt *AccountTransformer) Execute() error {
+	// Get the addresses we want to create eth balance records for
+	// We check each execution cycle in case a new one has been added to the Postgres table from an external source
+	addresses, err := tbt.AddressRepository.GetAddresses()
+	if err != nil {
+		return err
+	}
+	// Spin up a goroutine to process eth balance records in the background
+	go tbt.processEthBalanceRecords(addresses)
+	// Be sure to bring this goroutine down at the end, this blocks until the
+	// Goroutine has finished its current processing cycle (select case), receives the quit signal,
+	// Finishes catching up with processing headers
+	defer func() {
+		tbt.QuitChannel <- true
+		<- tbt.QuitChannel
+	}()
+	// Get all the headers which we need to process token value transfer events for
 	missingHeaders, err := tbt.HeaderRepository.MissingHeaders(tbt.NextStart, -1, "token_value_transfers")
 	if err != nil {
 		return err
 	}
-	// First we need to transform all token value transfer type events into uniform value transfer records
-	// Token balance records are a restricted view on this set of records
+	// Transform all token value transfer type events into uniform value transfer records
+	// User's token balance records are a view on this set of records
 	for _, header := range missingHeaders {
 		tbt.NextStart = header.BlockNumber // Set to the current header so that we restart on it if something goes wrong
 		allLogs, err := tbt.Fetcher.FetchLogs(nil, constants.Topic0s, header)
@@ -134,13 +146,6 @@ func (tbt *AccountTransformer) Execute() error {
 		}
 		tbt.NextStart++ // Set next header we need to start processing at
 	}
-
-	// If we haven't spun up a goroutine to create eth balance records (or if it was brought down by an error), do so now
-	if !tbt.initialized {
-		go tbt.createBalanceRecords()
-		tbt.initialized = true
-	}
-
 	return nil
 }
 
@@ -148,59 +153,51 @@ func (tbt *AccountTransformer) GetConfig() config.ContractConfig {
 	return tbt.Config
 }
 
-func (tbt *AccountTransformer) createBalanceRecords() {
+func (tbt *AccountTransformer) processEthBalanceRecords(addresses []common.Address) {
 	for {
 		select {
+		// If we get a quit signal, finish one more cycle of record processing to catch up before shutting the goroutine down
 		case <-tbt.QuitChannel:
-			tbt.initialized = false
+			tbt.createEthBalanceRecords(addresses)
+			tbt.QuitChannel <- true
 			return
 		default:
-			// Get the addresses we want to create eth balance records for
-			// We check each time in case a new one has been added to the Postgres table from an external source
-			addresses, err := tbt.AddressRepository.GetAddresses()
-			if err != nil {
-				tbt.throwErr(err)
-				return
-			}
-			// Cycle through the account addresses
-			for _, addr := range addresses {
-				// And create a checked_header id for them (IF NOT EXISTS)
-				columnID := "account_" + addr.Hex()
-				err = tbt.HeaderRepository.AddCheckColumn(columnID)
-				if err != nil {
-					tbt.throwErr(err)
-					return
-				}
-				// Retrieve the headers which still need eth balance records for this user
-				checkedButNotRecordedHeaders, err := tbt.HeaderRepository.MissingMethodsCheckedEventsIntersection(0, -1, []string{columnID}, []string{"token_value_transfers"})
-				if err != nil {
-					tbt.throwErr(err)
-					return
-				}
-				// Create coin balance records for this account at each header
-				coinBalanceRecords, err := tbt.AccountPoller.PollAccount(addr, checkedButNotRecordedHeaders)
-				if err != nil {
-					tbt.throwErr(err)
-					return
-				}
-				// And commit these records to Postgres
-				err = tbt.CoinBalanceRepository.CreateCoinBalanceRecords(coinBalanceRecords)
-				if err != nil {
-					tbt.throwErr(err)
-					return
-				}
-				// Mark these headers checked for this account
-				err = tbt.HeaderRepository.MarkHeadersCheckedForAll(checkedButNotRecordedHeaders, []string{columnID})
-				if err != nil {
-					tbt.throwErr(err)
-					return
-				}
-			}
+			tbt.createEthBalanceRecords(addresses)
 		}
 	}
 }
 
-func (tbt *AccountTransformer) throwErr(err error) {
-	log.Error("createBalanceRecords: error", err)
-	tbt.initialized = false
+func (tbt *AccountTransformer) createEthBalanceRecords(addresses []common.Address) {
+	// Cycle through the account addresses
+	for _, addr := range addresses {
+		// And create a checked_header id for them (IF NOT EXISTS, also this repository uses a lru cache to avoid excess db connections)
+		columnID := "account_" + addr.Hex()
+		err := tbt.HeaderRepository.AddCheckColumn(columnID)
+		if err != nil {
+			log.Errorf("transformer: error adding columnID %s", columnID, err)
+		}
+		// Retrieve the headers which still need eth balance records for this user
+		checkedButNotRecordedHeaders, err := tbt.HeaderRepository.MissingMethodsCheckedEventsIntersection(0, -1, []string{columnID}, []string{"token_value_transfers"})
+		if err != nil {
+			log.Errorf("transformer: error fetching missing headers for %s", columnID, err)
+		}
+		if len(checkedButNotRecordedHeaders) < 1 {
+			continue
+		}
+		// Create coin balance records for this account at each header
+		coinBalanceRecords, err := tbt.AccountPoller.PollAccount(addr, checkedButNotRecordedHeaders)
+		if err != nil {
+			log.Errorf("transformer: error creating coin balance records for %s", columnID, err)
+		}
+		// And commit these records to Postgres
+		err = tbt.CoinBalanceRepository.CreateCoinBalanceRecords(coinBalanceRecords)
+		if err != nil {
+			log.Errorf("transformer: error persisting coin balance records for %s", columnID, err)
+		}
+		// Mark these headers checked for this account
+		err = tbt.HeaderRepository.MarkHeadersCheckedForAll(checkedButNotRecordedHeaders, []string{columnID})
+		if err != nil {
+			log.Errorf("transformer: error marking headers checked for %s", columnID, err)
+		}
+	}
 }

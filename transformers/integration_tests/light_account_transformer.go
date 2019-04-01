@@ -17,11 +17,10 @@
 package integration_tests
 
 import (
-	"strings"
-
 	"github.com/ethereum/go-ethereum/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"strings"
 
 	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/fetcher"
 	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
@@ -178,12 +177,10 @@ var _ = Describe("Transformer", func() {
 			Expect(transferRecords[addrs[1]][1].Src).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes()))
 			Expect(transferRecords[addrs[1]][1].Dst).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").Bytes()))
 			Expect(transferRecords[addrs[1]][1].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
-
 			/*
 				It creates eth balance records
 			*/
 			// Sending a quit signal will block until the eth balance record creation finishes its current default `select` cycle and finds the quit signal in the next loop
-			t.QuitChannel <- true
 			var coinRecord shared.CoinBalanceRecord
 			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes(), 6791667)
 			Expect(err).ToNot(HaveOccurred())
@@ -340,7 +337,6 @@ var _ = Describe("Transformer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			err = t.Execute()
 			Expect(err).ToNot(HaveOccurred())
-			t.QuitChannel <- true
 		})
 
 		It("With real fetcher: transforms value transfer events into account records", func() {
@@ -361,7 +357,6 @@ var _ = Describe("Transformer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			err = t.Execute()
 			Expect(err).ToNot(HaveOccurred())
-			t.QuitChannel <- true
 		})
 	})
 
@@ -396,7 +391,6 @@ var _ = Describe("Transformer", func() {
 			Expect(err).ToNot(HaveOccurred())
 			err = t.Execute()
 			Expect(err).ToNot(HaveOccurred())
-			t.QuitChannel <- true
 		})
 	})
 })

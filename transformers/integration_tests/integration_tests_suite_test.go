@@ -18,8 +18,6 @@ package integration_tests_test
 
 import (
 	"github.com/spf13/viper"
-	"io/ioutil"
-	"log"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -34,5 +32,5 @@ func TestIntegration(t *testing.T) {
 var _ = BeforeSuite(func() {
 	viper.SetConfigName("integration")
 	viper.AddConfigPath("$GOPATH/src/github.com/vulcanize/account_transformers/environments/")
-	log.SetOutput(ioutil.Discard)
+	//log.SetOutput(ioutil.Discard)
 })
