@@ -28,6 +28,14 @@
   revision = "2e60448ffcc6bf78332d1fe590260095f554dd78"
 
 [[projects]]
+  digest = "1:5d47691333460db6ac83ced03c79b4bdb9aff3e322be24affb7855bed8affc6c"
+  name = "github.com/dave/jennifer"
+  packages = ["jen"]
+  pruneopts = ""
+  revision = "14e399b6b5e8456c66c45c955fc27b568bacb5c9"
+  version = "v1.3.0"
+
+[[projects]]
   digest = "1:aaeffbff5bd24654cb4c190ed75d6c7b57b4f5d6741914c1a7a6bb7447e756c5"
   name = "github.com/deckarep/golang-set"
   packages = ["."]
@@ -36,7 +44,7 @@
   version = "v1.7.1"
 
 [[projects]]
-  digest = "1:49b5451a4ce27b50393cc0d4c6fdd9cf7fa148ee4c0dd9c1d6c515b232427022"
+  digest = "1:90d36f5b581e95e00ced808cd48824ed6c320c25887828cce461bdef4cb7bc7c"
   name = "github.com/ethereum/go-ethereum"
   packages = [
     ".",
@@ -50,17 +58,8 @@
     "common/math",
     "common/mclock",
     "common/prque",
-    "consensus",
-    "consensus/misc",
-    "core",
-    "core/rawdb",
-    "core/state",
     "core/types",
-    "core/vm",
     "crypto",
-    "crypto/bn256",
-    "crypto/bn256/cloudflare",
-    "crypto/bn256/google",
     "crypto/ecies",
     "crypto/secp256k1",
     "ethclient",
@@ -81,8 +80,7 @@
     "trie",
   ]
   pruneopts = ""
-  revision = "c942700427557e3ff6de3aaf6b916e2f056c1ec2"
-  version = "v1.8.23"
+  revision = "cd79bc61a983d6482579d12cdd239b37bbfa12ef"
 
 [[projects]]
   digest = "1:eb53021a8aa3f599d29c7102e65026242bdedce998a54837dc67f14b6a97c5fd"
@@ -390,16 +388,23 @@
   revision = "b001fa50d6b27f3f0bb175a87d0cb55426d0a0ae"
 
 [[projects]]
-  branch = "track_uncle_rewards"
-  digest = "1:fddc3981d66206143cc0951c6c63eed6699013461e47f317e270dbee628af40e"
+  branch = "account_transformer_staging"
+  digest = "1:0865a9d4a537f449a88ae066d2167de989c10242abc4b22dad0e30b1d4257a15"
   name = "github.com/vulcanize/vulcanizedb"
   packages = [
+    "libraries/shared/chunker",
     "libraries/shared/constants",
     "libraries/shared/fetcher",
+    "libraries/shared/repository",
+    "libraries/shared/storage",
+    "libraries/shared/storage/utils",
+    "libraries/shared/transactions",
+    "libraries/shared/transformer",
     "libraries/shared/utilities",
+    "libraries/shared/watcher",
     "pkg/config",
+    "pkg/contract_watcher/light/fetcher",
     "pkg/contract_watcher/light/repository",
-    "pkg/contract_watcher/shared/helpers",
     "pkg/core",
     "pkg/datastore",
     "pkg/datastore/postgres",
@@ -411,10 +416,14 @@
     "pkg/geth/converters/common",
     "pkg/geth/converters/rpc",
     "pkg/geth/node",
+    "pkg/plugin",
+    "pkg/plugin/builder",
     "pkg/plugin/helpers",
+    "pkg/plugin/manager",
+    "pkg/plugin/writer",
   ]
   pruneopts = ""
-  revision = "8fcc2803f09734a352b8296dbcb013055eea333e"
+  revision = "5895066aefcc8c91021599c27d4e03e8cce4210a"
   source = "github.com/vulcanize/maker-vulcanizedb"
 
 [[projects]]
@@ -422,7 +431,6 @@
   name = "golang.org/x/crypto"
   packages = [
     "pbkdf2",
-    "ripemd160",
     "scrypt",
     "sha3",
     "ssh/terminal",
@@ -457,7 +465,6 @@
   digest = "1:0f39f8ca1c492b3b59020cb0f95e6635d5051bf7048a32ac5f9c6bf1adae6ec8"
   name = "golang.org/x/sys"
   packages = [
-    "cpu",
     "unix",
     "windows",
   ]
@@ -530,30 +537,31 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
     "github.com/ethereum/go-ethereum/common",
-    "github.com/ethereum/go-ethereum/core",
     "github.com/ethereum/go-ethereum/core/types",
     "github.com/ethereum/go-ethereum/ethclient",
     "github.com/ethereum/go-ethereum/rpc",
-    "github.com/jmoiron/sqlx",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/sirupsen/logrus",
     "github.com/spf13/viper",
-    "github.com/vulcanize/vulcanizedb/libraries/shared/constants",
-    "github.com/vulcanize/vulcanizedb/libraries/shared/fetcher",
+    "github.com/vulcanize/vulcanizedb/libraries/shared/transformer",
+    "github.com/vulcanize/vulcanizedb/libraries/shared/utilities",
+    "github.com/vulcanize/vulcanizedb/libraries/shared/watcher",
     "github.com/vulcanize/vulcanizedb/pkg/config",
+    "github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/fetcher",
     "github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository",
-    "github.com/vulcanize/vulcanizedb/pkg/contract_watcher/shared/helpers",
     "github.com/vulcanize/vulcanizedb/pkg/core",
     "github.com/vulcanize/vulcanizedb/pkg/datastore/postgres",
     "github.com/vulcanize/vulcanizedb/pkg/datastore/postgres/repositories",
-    "github.com/vulcanize/vulcanizedb/pkg/filters",
     "github.com/vulcanize/vulcanizedb/pkg/geth",
     "github.com/vulcanize/vulcanizedb/pkg/geth/client",
     "github.com/vulcanize/vulcanizedb/pkg/geth/converters/rpc",
     "github.com/vulcanize/vulcanizedb/pkg/geth/node",
+    "github.com/vulcanize/vulcanizedb/pkg/plugin",
+    "github.com/vulcanize/vulcanizedb/pkg/plugin/helpers",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

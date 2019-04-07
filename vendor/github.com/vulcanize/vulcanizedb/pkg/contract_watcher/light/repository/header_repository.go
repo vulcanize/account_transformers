@@ -18,10 +18,9 @@ package repository
 
 import (
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	"sync"
 
 	"github.com/hashicorp/golang-lru"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/vulcanize/vulcanizedb/pkg/core"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
@@ -43,8 +42,7 @@ type HeaderRepository interface {
 
 type headerRepository struct {
 	db      *postgres.DB
-	columns *lru.Cache  // Cache created columns to minimize db connections
-	mutex   *sync.Mutex // Used to provide thread-safe db access
+	columns *lru.Cache // Cache created columns to minimize db connections
 }
 
 func NewHeaderRepository(db *postgres.DB) *headerRepository {
@@ -52,7 +50,6 @@ func NewHeaderRepository(db *postgres.DB) *headerRepository {
 	return &headerRepository{
 		db:      db,
 		columns: ccs,
-		mutex:   new(sync.Mutex),
 	}
 }
 
@@ -66,9 +63,7 @@ func (r *headerRepository) AddCheckColumn(id string) error {
 
 	pgStr := "ALTER TABLE public.checked_headers ADD COLUMN IF NOT EXISTS "
 	pgStr = pgStr + id + " INTEGER NOT NULL DEFAULT 0"
-	r.mutex.Lock()
 	_, err := r.db.Exec(pgStr)
-	r.mutex.Unlock()
 	if err != nil {
 		return err
 	}
@@ -92,9 +87,7 @@ func (r *headerRepository) AddCheckColumns(ids []string) error {
 		}
 	}
 	if len(input) > 0 {
-		r.mutex.Lock()
 		_, err = r.db.Exec(baseQuery[:len(baseQuery)-1])
-		r.mutex.Unlock()
 		if err == nil {
 			for _, id := range input {
 				r.columns.Add(id, true)
@@ -107,12 +100,10 @@ func (r *headerRepository) AddCheckColumns(ids []string) error {
 
 // Marks the header checked for the provided column id
 func (r *headerRepository) MarkHeaderChecked(headerID int64, id string) error {
-	r.mutex.Lock()
 	_, err := r.db.Exec(`INSERT INTO public.checked_headers (header_id, `+id+`)
 		VALUES ($1, $2) 
 		ON CONFLICT (header_id) DO
 			UPDATE SET `+id+` = checked_headers.`+id+` + 1`, headerID, 1)
-	r.mutex.Unlock()
 	return err
 }
 
@@ -131,15 +122,12 @@ func (r *headerRepository) MarkHeaderCheckedForAll(headerID int64, ids []string)
 		pgStr += id + `= checked_headers.` + id + ` + 1, `
 	}
 	pgStr = pgStr[:len(pgStr)-2]
-	r.mutex.Lock()
 	_, err := r.db.Exec(pgStr, headerID)
-	r.mutex.Unlock()
 	return err
 }
 
 // Marks all of the provided headers checked for each of the provided column ids
 func (r *headerRepository) MarkHeadersCheckedForAll(headers []core.Header, ids []string) error {
-	r.mutex.Lock()
 	tx, err := r.db.Beginx()
 	if err != nil {
 		return err
@@ -165,7 +153,6 @@ func (r *headerRepository) MarkHeadersCheckedForAll(headers []core.Header, ids [
 		}
 	}
 	err = tx.Commit()
-	r.mutex.Unlock()
 	return err
 }
 
@@ -174,7 +161,6 @@ func (r *headerRepository) MissingHeaders(startingBlockNumber, endingBlockNumber
 	var result []core.Header
 	var query string
 	var err error
-	r.mutex.Lock()
 	if endingBlockNumber == -1 {
 		query = `SELECT headers.id, headers.block_number, headers.hash FROM headers
 				LEFT JOIN checked_headers on headers.id = header_id
@@ -193,7 +179,6 @@ func (r *headerRepository) MissingHeaders(startingBlockNumber, endingBlockNumber
 				ORDER BY headers.block_number`
 		err = r.db.Select(&result, query, startingBlockNumber, endingBlockNumber, r.db.Node.ID)
 	}
-	r.mutex.Unlock()
 	return contiguousHeaders(result, startingBlockNumber), err
 }
 
@@ -208,7 +193,6 @@ func (r *headerRepository) MissingHeadersForAll(startingBlockNumber, endingBlock
 	for _, id := range ids {
 		baseQuery += ` OR checked_headers.` + id + `= 0`
 	}
-	r.mutex.Lock()
 	if endingBlockNumber == -1 {
 		endStr := `) AND headers.block_number >= $1
 				  AND headers.eth_node_fingerprint = $2
@@ -223,7 +207,6 @@ func (r *headerRepository) MissingHeadersForAll(startingBlockNumber, endingBlock
 		query = baseQuery + endStr
 		err = r.db.Select(&result, query, startingBlockNumber, endingBlockNumber, r.db.Node.ID)
 	}
-	r.mutex.Unlock()
 	return contiguousHeaders(result, startingBlockNumber), err
 }
 
@@ -262,7 +245,6 @@ func (r *headerRepository) MissingMethodsCheckedEventsIntersection(startingBlock
 		baseQuery += id + ` =0 AND `
 	}
 	baseQuery = baseQuery[:len(baseQuery)-5] + `) `
-	r.mutex.Lock()
 	if endingBlockNumber == -1 {
 		endStr := `AND headers.block_number >= $1
 				  AND headers.eth_node_fingerprint = $2
@@ -277,7 +259,6 @@ func (r *headerRepository) MissingMethodsCheckedEventsIntersection(startingBlock
 		query = baseQuery + endStr
 		err = r.db.Select(&result, query, startingBlockNumber, endingBlockNumber, r.db.Node.ID)
 	}
-	r.mutex.Unlock()
 	return continuousHeaders(result), err
 }
 
@@ -304,11 +285,9 @@ func (r *headerRepository) CheckCache(key string) (interface{}, bool) {
 
 // Used to mark a header checked as part of some external transaction so as to group into one commit
 func (r *headerRepository) MarkHeaderCheckedInTransaction(headerID int64, tx *sqlx.Tx, eventID string) error {
-	r.mutex.Lock()
 	_, err := tx.Exec(`INSERT INTO public.checked_headers (header_id, `+eventID+`)
 		VALUES ($1, $2) 
 		ON CONFLICT (header_id) DO
 			UPDATE SET `+eventID+` = checked_headers.`+eventID+` + 1`, headerID, 1)
-	r.mutex.Unlock()
 	return err
 }

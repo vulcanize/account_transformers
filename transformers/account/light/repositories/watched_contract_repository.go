@@ -39,7 +39,7 @@ func NewWatchedContractRepository(db *postgres.DB) *watchedContractRepository {
 
 func (ar *watchedContractRepository) GetAddresses() ([]common.Address, error) {
 	dest := new([][]byte)
-	err := ar.DB.Select(dest, `SELECT * FROM accounts.watched_contracts`)
+	err := ar.DB.Select(dest, `SELECT * FROM accounts.contract_addresses`)
 	if err != nil {
 		return nil, err
 	}
@@ -52,6 +52,6 @@ func (ar *watchedContractRepository) GetAddresses() ([]common.Address, error) {
 }
 
 func (ar *watchedContractRepository) AddAddress(addr common.Address) error {
-	_, err := ar.DB.Exec(`INSERT INTO accounts.watched_contracts (contract) VALUES ($1) ON CONFLICT (contract) DO NOTHING`, addr.Bytes())
+	_, err := ar.DB.Exec(`INSERT INTO accounts.contract_addresses (contract) VALUES ($1) ON CONFLICT (contract) DO NOTHING`, addr.Bytes())
 	return err
 }

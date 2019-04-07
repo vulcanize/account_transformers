@@ -44,7 +44,7 @@ type AccountTransformer struct {
 	CoinBalanceRepository        repositories.AccountCoinBalanceRepository
 	AccountPoller                poller.AccountPoller
 	NextStart                    int64
-	initialized                  bool
+	routine                      bool
 	QuitChannel                  chan bool
 }
 
@@ -64,7 +64,7 @@ func (tbt AccountTransformer) NewTransformer(db *postgres.DB, blockChain core.Bl
 func (tbt *AccountTransformer) Init() error {
 	var err error
 	// Stop createBalanceRecords goroutine if it is already running, so that we can restart it with new init
-	if tbt.initialized {
+	if tbt.routine {
 		tbt.QuitChannel <- true
 	}
 	// Get the list of account addresses we want to create records for from the config and add them to Postgres
@@ -136,9 +136,9 @@ func (tbt *AccountTransformer) Execute() error {
 	}
 
 	// If we haven't spun up a goroutine to create eth balance records (or if it was brought down by an error), do so now
-	if !tbt.initialized {
+	if !tbt.routine {
 		go tbt.createBalanceRecords()
-		tbt.initialized = true
+		tbt.routine = true
 	}
 
 	return nil
@@ -152,7 +152,7 @@ func (tbt *AccountTransformer) createBalanceRecords() {
 	for {
 		select {
 		case <-tbt.QuitChannel:
-			tbt.initialized = false
+			tbt.routine = false
 			return
 		default:
 			// Get the addresses we want to create eth balance records for
@@ -176,6 +176,9 @@ func (tbt *AccountTransformer) createBalanceRecords() {
 				if err != nil {
 					tbt.throwErr(err)
 					return
+				}
+				if len(checkedButNotRecordedHeaders) < 1 {
+					continue
 				}
 				// Create coin balance records for this account at each header
 				coinBalanceRecords, err := tbt.AccountPoller.PollAccount(addr, checkedButNotRecordedHeaders)
@@ -202,5 +205,5 @@ func (tbt *AccountTransformer) createBalanceRecords() {
 
 func (tbt *AccountTransformer) throwErr(err error) {
 	log.Error("createBalanceRecords: error", err)
-	tbt.initialized = false
+	tbt.routine = false
 }

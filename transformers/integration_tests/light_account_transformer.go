@@ -225,7 +225,7 @@ var _ = Describe("Transformer", func() {
 				It creates token balance records (as views of the generic value transfer event records)
 			*/
 
-			pgStr := `SELECT address_hash, block_number, value, token_contract_address_hash 
+			pgStr := `SELECT address_hash, block_number, value, token_contract_address_hash
 											FROM accounts.address_token_balances 
 											WHERE address_hash = $1 AND token_contract_address_hash = $2 AND block_number = $3`
 			var tokenRecord shared.TokenBalanceRecord
@@ -287,7 +287,7 @@ var _ = Describe("Transformer", func() {
 				It creates transaction records
 			*/
 
-			pgStr = `SELECT hash, gaslimit, gasprice, nonce, tx_to, tx_from, value 
+			pgStr = `SELECT hash, gas_limit, gas_price, nonce, tx_to, tx_from, value
 											FROM public.light_sync_transactions 
 											WHERE header_id = $1 AND (tx_from = $2 OR tx_to = $2)`
 			trx1 := new(core.TransactionModel)
@@ -308,13 +308,13 @@ var _ = Describe("Transformer", func() {
 			pgStr = `SELECT contract_address, cumulative_gas_used, gas_used, state_root, status, tx_hash
 											FROM public.light_sync_receipts
 											WHERE header_id = $1 AND tx_hash = $2`
-			receipt1 := new(core.ReceiptModel)
+			receipt1 := new(core.Receipt)
 			err = db.Get(receipt1, pgStr,
 				headerID2,
 				trx1.Hash)
 			Expect(err).ToNot(HaveOccurred())
 
-			receipt2 := new(core.ReceiptModel)
+			receipt2 := new(core.Receipt)
 			err = db.Get(receipt2, pgStr,
 				headerID2,
 				trx2.Hash)
