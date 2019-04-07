@@ -30,11 +30,11 @@ Once `lightSync` has begun, we can run the `composeAndExecute` command to compos
 do so, we use a normal `compose` [config](https://github.com/vulcanize/maker-vulcanizedb#contractwatcher) with two additional parameter maps:
 
 ```toml
-[contract]
+[token]
     addresses = [
         "0x0000000000085d4780B73119b644AE5ecd22b376",
     ]
-    [contract.equivalents]
+    [token.equivalents]
     0x0000000000085d4780B73119b644AE5ecd22b376 = [
        "0x8dd5fbCe2F6a956C3022bA3663759011Dd51e73E"
     ]
