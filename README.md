@@ -51,7 +51,7 @@ This can be updated at runtime by adding new contract addresses to the `accounts
 
 ```postgresql
 CREATE TABLE accounts.contract_addresses (
-  contract BYTEA PRIMARY KEY
+  contract VARCHAR(42) PRIMARY KEY
 );
 ```
 `contract.equivalents` is used to manually map contract addresses which represent the same token and need to be tracked
@@ -69,7 +69,7 @@ records for. This can be updated at runtime by adding new addresses to the `acco
 
 ```postgresql
 CREATE TABLE accounts.addresses (
-  address BYTEA PRIMARY KEY
+  address VARCHAR(42) PRIMARY KEY
 );
 ```
 
@@ -127,9 +127,9 @@ Which produces a view equivalent to the below table:
 
 ```postgresql
 CREATE TABLE accounts.address_token_balances (
-  address_hash                BYTEA NOT NULL,
+  address_hash                VARCHAR(42) NOT NULL,
   block_number                BIGINT NOT NULL,
-  token_contract_address_hash BYTEA NOT NULL,
+  token_contract_address_hash VARCHAR(42) NOT NULL,
   value                       NUMERIC,
   UNIQUE (address_hash, block_number, token_contract_address_hash)
 );
@@ -142,7 +142,7 @@ balance records of the form:
 CREATE TABLE accounts.address_coin_balances (
   id                          SERIAL PRIMARY KEY,
   header_id                   INTEGER NOT NULL REFERENCES headers (id) ON DELETE CASCADE,
-  address_hash                BYTEA NOT NULL,
+  address_hash                VARCHAR(42) NOT NULL,
   block_number                BIGINT NOT NULL,
   value                       NUMERIC(100,0),
   value_fetched_at            TIMESTAMP WITHOUT TIME ZONE,
