@@ -57,7 +57,7 @@ func (ap *accountPoller) PollAccount(addr common.Address, headers []core.Header)
 		}
 		record := shared.CoinBalanceRecord{
 			BlockNumber: header.BlockNumber,
-			Address:     addr.Bytes(),
+			Address:     addr.String(),
 			HeaderID:    header.Id,
 		}
 		balance, err := ap.blockChain.GetAccountBalance(addr, big.NewInt(header.BlockNumber))

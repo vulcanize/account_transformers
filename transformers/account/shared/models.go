@@ -18,14 +18,14 @@ package shared
 
 type CoinBalanceRecord struct {
 	HeaderID    int64  `db:"header_id"`
-	Address     []byte `db:"address_hash"`
+	Address     string `db:"address_hash"`
 	BlockNumber int64  `db:"block_number"`
 	Value       string
 }
 
 type TokenBalanceRecord struct {
-	Address         []byte `db:"address_hash"`
+	Address         string `db:"address_hash"`
 	BlockNumber     int64  `db:"block_number"`
-	ContractAddress []byte `db:"token_contract_address_hash"`
+	ContractAddress string `db:"token_contract_address_hash"`
 	Value           string
 }

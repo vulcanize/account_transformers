@@ -118,8 +118,8 @@ func (c *valueTransferConverter) unpack(log types.Log, headerID int64, topicCoun
 		HeaderID:         headerID,
 		Name:             c.boundEvent.Label.Name(),
 		BlockNumber:      log.BlockNumber,
-		Src:              src.Bytes(),
-		Dst:              dst.Bytes(),
+		Src:              src.String(),
+		Dst:              dst.String(),
 		Amount:           amount.String(),
 		Contract:         c.getEquivalent(log.Address),
 		LogIndex:         log.Index,
@@ -128,13 +128,13 @@ func (c *valueTransferConverter) unpack(log types.Log, headerID int64, topicCoun
 	}, nil
 }
 
-func (c *valueTransferConverter) getEquivalent(addr common.Address) []byte {
+func (c *valueTransferConverter) getEquivalent(addr common.Address) string {
 	for topAddr, equivalents := range c.mappedEquivalentAddrs {
 		for _, equivalent := range equivalents {
 			if equivalent == addr {
-				return topAddr.Bytes()
+				return topAddr.String()
 			}
 		}
 	}
-	return addr.Bytes() // If we find no top level equivalency to map this token address to, return it
+	return addr.String() // If we find no top level equivalency to map this token address to, return it
 }
