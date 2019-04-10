@@ -2,7 +2,7 @@
 CREATE TABLE accounts.address_coin_balances (
   id                          SERIAL PRIMARY KEY,
   header_id                   INTEGER NOT NULL REFERENCES headers (id) ON DELETE CASCADE,
-  address_hash                BYTEA NOT NULL,
+  address_hash                VARCHAR(42) NOT NULL,
   block_number                BIGINT NOT NULL,
   value                       NUMERIC(100,0),
   value_fetched_at            TIMESTAMP WITHOUT TIME ZONE,

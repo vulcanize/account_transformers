@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE accounts.contract_addresses (
-  contract BYTEA PRIMARY KEY
+  contract VARCHAR(42) PRIMARY KEY
 );
 
 -- +goose Down
