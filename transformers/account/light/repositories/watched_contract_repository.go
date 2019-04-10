@@ -38,14 +38,14 @@ func NewWatchedContractRepository(db *postgres.DB) *watchedContractRepository {
 }
 
 func (ar *watchedContractRepository) GetAddresses() ([]common.Address, error) {
-	dest := new([][]byte)
+	dest := new([]string)
 	err := ar.DB.Select(dest, `SELECT * FROM accounts.contract_addresses`)
 	if err != nil {
 		return nil, err
 	}
 	addresses := make([]common.Address, 0, len(*dest))
-	for _, addrBytes := range *dest {
-		addr := common.BytesToAddress(addrBytes)
+	for _, addrStrings := range *dest {
+		addr := common.HexToAddress(addrStrings)
 		addresses = append(addresses, addr)
 	}
 	return addresses, nil

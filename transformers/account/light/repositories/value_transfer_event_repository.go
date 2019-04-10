@@ -106,7 +106,7 @@ func (br *valueTransferEventRepository) GetTokenValueTransferRecordsForAccounts(
 	pgStr := `SELECT header_id, name, block_number, dst, src, amount, contract, log_idx, tx_idx, raw_log FROM accounts.token_value_transfers
 			WHERE (dst = $1 OR src = $1) AND block_number <= $2 ORDER BY block_number`
 	for _, addr := range addresses {
-		rows, err := br.DB.Queryx(pgStr, addr.Bytes(), lastBlock)
+		rows, err := br.DB.Queryx(pgStr, addr.String(), lastBlock)
 		if err != nil {
 			return nil, err
 		}
