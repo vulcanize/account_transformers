@@ -1,6 +1,6 @@
 -- +goose Up
 CREATE TABLE accounts.addresses (
-  address BYTEA PRIMARY KEY
+  address VARCHAR(42) PRIMARY KEY
 );
 
 -- +goose Down
