@@ -1,3 +1,8 @@
+# Account Transformers
+
+[![Build Status](https://travis-ci.com/vulcanize/account_transformers.svg?branch=master)](https://travis-ci.com/vulcanize/account_transformers)
+[![Go Report Card](https://goreportcard.com/badge/github.com/vulcanize/account_transformers)](https://goreportcard.com/report/github.com/vulcanize/account_transformers)
+
 [VulcanizeDB](https://github.com/vulcanize/maker-vulcanizedb) transformers for watching ETH and token value transfers
 
 This repo contains transformers for indexing of ETH and token balances for account addresses.
@@ -8,7 +13,7 @@ These events are unpacked and converted to generic "Value Transfer" [records](ht
 Token balances for user accounts are then constructed  as views on these records.
 It then polls an archival Eth node to retrieve balances for these accounts and generate eth balance records.
 
-# Setup 
+## Setup
 
 1. Setup VulcanizeDB
 1. Switch to `account_transformer_staging` branch
@@ -19,15 +24,13 @@ It then polls an archival Eth node to retrieve balances for these accounts and g
 
 These transformers are run as plugin to VulcanizeDB's `composeAndExecute` command.
 
-To begin, setup VulcanizeDB as described [here](https://github.com/vulcanize/maker-vulcanizedb#project-setup).
-Currently, this transformer needs to be run from the `account_transformer_staging` [branch](https://github.com/vulcanize/maker-vulcanizedb/tree/account_transformer_staging)
-of VulcanizeDB, so switch to that branch before building.
+To begin, setup VulcanizeDB as described [here](https://github.com/vulcanize/vulcanizedb#install).
 
-Once vulcanizeDB is setup and built, run vulcanizeDB in `lightSync` [mode](https://github.com/vulcanize/maker-vulcanizedb#alternatively-sync-in-light-mode)
+Once vulcanizeDB is setup and built, run vulcanizeDB in `lightSync` [mode](https://github.com/vulcanize/vulcanizedb/blob/master/documentation/sync.md#lightsync)
 to begin syncing headers into Postgres. It is vital that this sync process begins at a block before the `account.start` field below.
 
 Once `lightSync` has begun, we can run the `composeAndExecute` command to compose and execute our account transformer. To
-do so, we use a normal `compose` [config](https://github.com/vulcanize/maker-vulcanizedb#contractwatcher) with two additional parameter maps:
+do so, we use a normal `compose` [config](https://github.com/vulcanize/vulcanizedb/blob/master/documentation/composeAndExecute.md#configuration) with two additional parameter maps:
 
 ```toml
 [token]
@@ -76,12 +79,11 @@ CREATE TABLE accounts.addresses (
 Currently, this config's `ipcPath` needs to point to an archival node endpoint in order to track ETH balances, this will be deprecated
 by the use of state diff data in the near future.
 
-To expose the transformed data over Postgraphile, we need to modify our Postgraphile [config.ts](https://github.com/vulcanize/maker-vulcanizedb/blob/staging/postgraphile/src/server/config.ts#L42)
-and also [config.spec.ts](https://github.com/vulcanize/maker-vulcanizedb/blob/staging/postgraphile/spec/server/config.spec.ts) to include the "accounts" schema
+To expose the transformed data over Postgraphile, we need to modify our Postgraphile [config.ts](https://github.com/vulcanize/vulcanizedb/blob/master/postgraphile/src/server/config.ts) to include the "accounts" schema
 e.g. (`["public", "accounts"]`). After this, we should be able to expose graphQL endpoints as usual.
 
 
-# Output
+## Output
 
 The transformer processes value transfer events from all contract addresses into uniform records of the form:
 
@@ -131,7 +133,6 @@ CREATE TABLE accounts.address_token_balances (
   block_number                BIGINT NOT NULL,
   token_contract_address_hash BYTEA NOT NULL,
   value                       NUMERIC,
-  UNIQUE (address_hash, block_number, token_contract_address_hash)
 );
 ```
 
@@ -183,10 +184,11 @@ CREATE TABLE light_sync_receipts(
   state_root          VARCHAR(66),
   status              INTEGER,
   tx_hash             VARCHAR(66),
+  rlp                 BYTEA,
   UNIQUE(header_id, transaction_id)
 );
 ```
 
-# Contributing
+## Contributing
 If you notice a value transfer type event is missing from the [ones we are already tracking](https://github.com/vulcanize/account_transformers/blob/master/transformers/account/shared/constants/signatures.go#L56),
 please feel free to submit a PR to introduce the event or submit an issue to note it for inclusion.
