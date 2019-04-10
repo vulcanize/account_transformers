@@ -22,41 +22,41 @@ import (
 )
 
 var FakeCoinRecord1 = shared.CoinBalanceRecord{
-	Address:     []byte("FakeAddress"),
+	Address:     string("FakeAddress"),
 	BlockNumber: 6791667,
 	Value:       "12345",
 }
 
 var FakeCoinRecord2 = shared.CoinBalanceRecord{
-	Address:     []byte("FakeAddress"),
+	Address:     string("FakeAddress"),
 	BlockNumber: 6791668,
 	Value:       "10000",
 }
 
 var FakeCoinRecord3 = shared.CoinBalanceRecord{
-	Address:     []byte("FakeAddress"),
+	Address:     string("FakeAddress"),
 	BlockNumber: 6791669,
 	Value:       "10000",
 }
 
 var FakeTokenRecord1 = shared.TokenBalanceRecord{
-	Address:         []byte("FakeAddress"),
+	Address:         string("FakeAddress"),
 	BlockNumber:     6791667,
-	ContractAddress: []byte("FakeContract"),
+	ContractAddress: string("FakeContract"),
 	Value:           "400",
 }
 
 var FakeTokenRecord2 = shared.TokenBalanceRecord{
-	Address:         []byte("FakeAddress"),
+	Address:         string("FakeAddress"),
 	BlockNumber:     6791668,
-	ContractAddress: []byte("FakeContract"),
+	ContractAddress: string("FakeContract"),
 	Value:           "400",
 }
 
 var FakeTokenRecord3 = shared.TokenBalanceRecord{
-	Address:         []byte("FakeAddress"),
+	Address:         string("FakeAddress"),
 	BlockNumber:     6791669,
-	ContractAddress: []byte("FakeContract"),
+	ContractAddress: string("FakeContract"),
 	Value:           "1400",
 }
 
