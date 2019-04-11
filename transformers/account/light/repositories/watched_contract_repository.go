@@ -52,6 +52,6 @@ func (ar *watchedContractRepository) GetAddresses() ([]common.Address, error) {
 }
 
 func (ar *watchedContractRepository) AddAddress(addr common.Address) error {
-	_, err := ar.DB.Exec(`INSERT INTO accounts.contract_addresses (contract) VALUES ($1) ON CONFLICT (contract) DO NOTHING`, addr.Bytes())
+	_, err := ar.DB.Exec(`INSERT INTO accounts.contract_addresses (contract) VALUES ($1) ON CONFLICT (contract) DO NOTHING`, addr.String())
 	return err
 }
