@@ -125,22 +125,22 @@ var _ = Describe("Transformer", func() {
 			Expect(len(transferRecords[addrs[0]])).To(Equal(3))
 			Expect(len(transferRecords[addrs[1]])).To(Equal(0))
 			Expect(transferRecords[addrs[0]][0].BlockNumber).To(Equal(uint64(6791666)))
-			Expect(transferRecords[addrs[0]][0].Contract).To(Equal(common.HexToAddress("0xdAC17F958D2ee523a2206206994597C13D831ec7").Bytes()))
+			Expect(transferRecords[addrs[0]][0].Contract).To(Equal(common.HexToAddress("0xdAC17F958D2ee523a2206206994597C13D831ec7").String()))
 			Expect(transferRecords[addrs[0]][0].HeaderID).To(Equal(headerID0))
-			Expect(transferRecords[addrs[0]][0].Src).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").Bytes()))
-			Expect(transferRecords[addrs[0]][0].Dst).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(transferRecords[addrs[0]][0].Src).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").String()))
+			Expect(transferRecords[addrs[0]][0].Dst).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String()))
 			Expect(transferRecords[addrs[0]][0].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 			Expect(transferRecords[addrs[0]][1].BlockNumber).To(Equal(uint64(6791666)))
-			Expect(transferRecords[addrs[0]][1].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(transferRecords[addrs[0]][1].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String()))
 			Expect(transferRecords[addrs[0]][1].HeaderID).To(Equal(headerID0))
-			Expect(transferRecords[addrs[0]][1].Src).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").Bytes()))
-			Expect(transferRecords[addrs[0]][1].Dst).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(transferRecords[addrs[0]][1].Src).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").String()))
+			Expect(transferRecords[addrs[0]][1].Dst).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String()))
 			Expect(transferRecords[addrs[0]][1].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 			Expect(transferRecords[addrs[0]][2].BlockNumber).To(Equal(uint64(6791667)))
-			Expect(transferRecords[addrs[0]][2].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(transferRecords[addrs[0]][2].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String()))
 			Expect(transferRecords[addrs[0]][2].HeaderID).To(Equal(headerID1))
-			Expect(transferRecords[addrs[0]][2].Src).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").Bytes()))
-			Expect(transferRecords[addrs[0]][2].Dst).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(transferRecords[addrs[0]][2].Src).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").String()))
+			Expect(transferRecords[addrs[0]][2].Dst).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String()))
 			Expect(transferRecords[addrs[0]][2].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 
 			Expect(f.PassedHeaders[2].Id).To(Equal(headerID2))
@@ -149,16 +149,16 @@ var _ = Describe("Transformer", func() {
 			Expect(len(transferRecords[addrs[0]])).To(Equal(4))
 			Expect(len(transferRecords[addrs[1]])).To(Equal(1))
 			Expect(transferRecords[addrs[0]][3].BlockNumber).To(Equal(uint64(6791668)))
-			Expect(transferRecords[addrs[0]][3].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(transferRecords[addrs[0]][3].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String()))
 			Expect(transferRecords[addrs[0]][3].HeaderID).To(Equal(headerID2))
-			Expect(transferRecords[addrs[0]][3].Src).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
-			Expect(transferRecords[addrs[0]][3].Dst).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes()))
+			Expect(transferRecords[addrs[0]][3].Src).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String()))
+			Expect(transferRecords[addrs[0]][3].Dst).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String()))
 			Expect(transferRecords[addrs[0]][3].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 			Expect(transferRecords[addrs[1]][0].BlockNumber).To(Equal(uint64(6791668)))
-			Expect(transferRecords[addrs[1]][0].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(transferRecords[addrs[1]][0].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String()))
 			Expect(transferRecords[addrs[1]][0].HeaderID).To(Equal(headerID2))
-			Expect(transferRecords[addrs[1]][0].Src).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
-			Expect(transferRecords[addrs[1]][0].Dst).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes()))
+			Expect(transferRecords[addrs[1]][0].Src).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String()))
+			Expect(transferRecords[addrs[1]][0].Dst).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String()))
 			Expect(transferRecords[addrs[1]][0].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 
 			Expect(f.PassedHeaders[3].Id).To(Equal(headerID3))
@@ -167,16 +167,16 @@ var _ = Describe("Transformer", func() {
 			Expect(len(transferRecords[addrs[0]])).To(Equal(5))
 			Expect(len(transferRecords[addrs[1]])).To(Equal(2))
 			Expect(transferRecords[addrs[0]][4].BlockNumber).To(Equal(uint64(6791669)))
-			Expect(transferRecords[addrs[0]][4].Contract).To(Equal(common.HexToAddress("0xdAC17F958D2ee523a2206206994597C13D831ec7").Bytes()))
+			Expect(transferRecords[addrs[0]][4].Contract).To(Equal(common.HexToAddress("0xdAC17F958D2ee523a2206206994597C13D831ec7").String()))
 			Expect(transferRecords[addrs[0]][4].HeaderID).To(Equal(headerID3))
-			Expect(transferRecords[addrs[0]][4].Src).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").Bytes()))
-			Expect(transferRecords[addrs[0]][4].Dst).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(transferRecords[addrs[0]][4].Src).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").String()))
+			Expect(transferRecords[addrs[0]][4].Dst).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String()))
 			Expect(transferRecords[addrs[0]][4].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 			Expect(transferRecords[addrs[1]][1].BlockNumber).To(Equal(uint64(6791669)))
-			Expect(transferRecords[addrs[1]][1].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(transferRecords[addrs[1]][1].Contract).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String()))
 			Expect(transferRecords[addrs[1]][1].HeaderID).To(Equal(headerID3))
-			Expect(transferRecords[addrs[1]][1].Src).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes()))
-			Expect(transferRecords[addrs[1]][1].Dst).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").Bytes()))
+			Expect(transferRecords[addrs[1]][1].Src).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String()))
+			Expect(transferRecords[addrs[1]][1].Dst).To(Equal(common.HexToAddress("0x0000000000000000000000000000000000000000").String()))
 			Expect(transferRecords[addrs[1]][1].Amount).To(Equal("376864137882094974530501285544524832305182681138"))
 
 			/*
@@ -185,39 +185,39 @@ var _ = Describe("Transformer", func() {
 			// Sending a quit signal will block until the eth balance record creation finishes its current default `select` cycle and finds the quit signal in the next loop
 			t.QuitChannel <- true
 			var coinRecord shared.CoinBalanceRecord
-			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes(), 6791667)
+			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String(), 6791667)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(coinRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(coinRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String()))
 			Expect(coinRecord.BlockNumber).To(Equal(int64(6791667)))
 			Expect(coinRecord.Value).To(Equal("18780247519"))
 
-			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes(), 6791667)
+			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String(), 6791667)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(coinRecord.Address).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes()))
+			Expect(coinRecord.Address).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String()))
 			Expect(coinRecord.BlockNumber).To(Equal(int64(6791667)))
 			Expect(coinRecord.Value).To(Equal("171056198103568077794"))
 
-			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes(), 6791668)
+			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String(), 6791668)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(coinRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(coinRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String()))
 			Expect(coinRecord.BlockNumber).To(Equal(int64(6791668)))
 			Expect(coinRecord.Value).To(Equal("165525871780247519"))
 
-			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes(), 6791668)
+			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String(), 6791668)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(coinRecord.Address).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes()))
+			Expect(coinRecord.Address).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String()))
 			Expect(coinRecord.BlockNumber).To(Equal(int64(6791668)))
 			Expect(coinRecord.Value).To(Equal("172845293271568077794"))
 
-			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes(), 6791669)
+			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String(), 6791669)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(coinRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(coinRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String()))
 			Expect(coinRecord.BlockNumber).To(Equal(int64(6791669)))
 			Expect(coinRecord.Value).To(Equal("165525871780247519"))
 
-			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes(), 6791669)
+			err = db.Get(&coinRecord, `SELECT address_hash, block_number, value FROM accounts.address_coin_balances WHERE address_hash = $1 AND block_number = $2`, common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String(), 6791669)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(coinRecord.Address).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes()))
+			Expect(coinRecord.Address).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String()))
 			Expect(coinRecord.BlockNumber).To(Equal(int64(6791669)))
 			Expect(coinRecord.Value).To(Equal("172845293271568077794"))
 
@@ -232,56 +232,56 @@ var _ = Describe("Transformer", func() {
 
 			// First header, one event with only our first watched address => one record
 			err = db.Get(&tokenRecord, pgStr,
-				common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes(),
-				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes(),
+				common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String(),
+				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String(),
 				6791667)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String()))
 			Expect(tokenRecord.BlockNumber).To(Equal(int64(6791667)))
 			Expect(tokenRecord.Value).To(Equal("753728275764189949061002571089049664610365362276"))
-			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String()))
 
 			// Second header, another event with both our watched addresses => two more records
 			err = db.Get(&tokenRecord, pgStr,
-				common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes(),
-				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes(),
+				common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String(),
+				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String(),
 				6791668)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String()))
 			Expect(tokenRecord.BlockNumber).To(Equal(int64(6791668)))
 			Expect(tokenRecord.Value).To(Equal("376864137882094974530501285544524832305182681138"))
-			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String()))
 
 			err = db.Get(&tokenRecord, pgStr,
-				common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes(),
-				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes(),
+				common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String(),
+				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String(),
 				6791668)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes()))
+			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String()))
 			Expect(tokenRecord.BlockNumber).To(Equal(int64(6791668)))
 			Expect(tokenRecord.Value).To(Equal("376864137882094974530501285544524832305182681138"))
-			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String()))
 
 			// Third header, another event with only the 2nd address => two more records, one changed and one unchanged
 			err = db.Get(&tokenRecord, pgStr,
-				common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes(),
-				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes(),
+				common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String(),
+				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String(),
 				6791669)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").Bytes()))
+			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x48E78948C80e9f8F53190DbDF2990f9a69491ef4").String()))
 			Expect(tokenRecord.BlockNumber).To(Equal(int64(6791669)))
 			Expect(tokenRecord.Value).To(Equal("376864137882094974530501285544524832305182681138"))
-			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String()))
 
 			err = db.Get(&tokenRecord, pgStr,
-				common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes(),
-				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes(),
+				common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String(),
+				common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String(),
 				6791669)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").Bytes()))
+			Expect(tokenRecord.Address).To(Equal(common.HexToAddress("0x009C1E8674038605C5AE33C74f13bC528E1222B5").String()))
 			Expect(tokenRecord.BlockNumber).To(Equal(int64(6791669)))
 			Expect(tokenRecord.Value).To(Equal("0"))
-			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").Bytes()))
+			Expect(tokenRecord.ContractAddress).To(Equal(common.HexToAddress("0x0000000000085d4780B73119b644AE5ecd22b376").String()))
 
 			/*
 				It creates transaction records
