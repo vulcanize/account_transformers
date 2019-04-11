@@ -5,30 +5,22 @@ go:
 services:
   - postgresql
 addons:
-  postgresql: "9.6"
+  postgresql: '9.6'
   ssh_known_hosts:
     - 147.75.96.51
-
 go_import_path: github.com/vulcanize/account_transformers
-
 before_install:
-  # ginkgo golint dep goose
   - make installtools
   - bash ./scripts/install-postgres-10.sh
-  - npm install -g ganache-cli
-  - curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-  - echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-  - sudo apt-get update && sudo apt-get install yarn
-
 before_script:
-  - go get -u github.com/pressly/sup/cmd/sup
   - sudo -u postgres createdb vulcanize_private
   - make version_migrations
   - make migrate NAME=vulcanize_private
-
 script:
   - make test
   - make integrationtest
-
 notifications:
   email: false
+env:
+  matrix:
+    secure: IDn4cdiRIlulreTCV/SBg4IJLSB94uTLf+Nj439yKgakFYRAB+hcRqs7I8Yk1uqlM+SRuDUkunWJdsoyqFmNjkalfX/BHi8y+P72zGH+LyXgTX6ts+wiVrIUk7om2ntTQv9E2BNIIP2JQlba/4By0rHMDhJecQnn85kD4XvhkQM1Nlv+auZCQaRCY1roopJ6isl2ED9bIxdZD1tK2JVZtFtUXq+HIbHocvpKZXAQ5LvWRkrFSZqewgEKhDMi88ob+KAl5MAD85KynJ4kSCJdHLq7iZtQiczuTeiNYDE+N/z2jhvV3+wZ5GbAWVjjCA6NUexiWSuDusLPiMHD+xH48awkWMM+HJZNnpRxj9teDuHeKdnhIbdmS3biLDVDpZGjbbbWL03QtuI9BNkm/jzgX0q4p5gXYog6p7D2OKRrBewXRaGotmjhyus9UvZIUbFb375jnBdK6JpG5m5mFt4CCEQNfPqajZipaoEItNVyqxbgOSRE3Z3SkQU8K+4p88GdJrrF1Rtqx7iyC9sHNIoBTOjurk5rtbsoc9Pn4iKt1i4WlYu5O69t/g/BHOOQEL/NgOedPbtkSr7M70dsCihxRPHIPLwJIFCmPm1RsSLeAme1D+zp55vBiTXkn3R/i4JvTycxEXgc87wa8kSGzBG89R2S8E2Tkshp/T0oXysTPwg=
