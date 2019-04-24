@@ -56,7 +56,7 @@ func NewHeaderRepository(db *postgres.DB) *headerRepository {
 // Adds a checked_header column for the provided column id
 func (r *headerRepository) AddCheckColumn(id string) error {
 	// Check cache to see if column already exists before querying pg
-	_, ok := r.columns.Get(id) // lru cache is already thread safe, no need to lock mutex before access it
+	_, ok := r.columns.Get(id)
 	if ok {
 		return nil
 	}
