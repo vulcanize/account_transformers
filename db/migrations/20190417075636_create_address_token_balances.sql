@@ -5,7 +5,7 @@ CREATE OR REPLACE VIEW accounts.address_token_balances AS (
         address_hash,
         token_contract_address_hash,
         block_number,
-        COALESCE(SUM(amount), 0)
+        COALESCE(SUM(amount), 0) as value
     FROM (
         SELECT
             xfer.src AS address_hash,
