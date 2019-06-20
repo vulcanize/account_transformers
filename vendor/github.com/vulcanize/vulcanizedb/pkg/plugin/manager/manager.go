@@ -19,12 +19,13 @@ package manager
 import (
 	"errors"
 	"fmt"
-	"github.com/vulcanize/vulcanizedb/pkg/config"
-	"github.com/vulcanize/vulcanizedb/pkg/plugin/helpers"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/vulcanize/vulcanizedb/pkg/config"
+	"github.com/vulcanize/vulcanizedb/pkg/plugin/helpers"
 )
 
 // Interface for managing the db migrations for plugin transformers
@@ -128,7 +129,13 @@ func (m *manager) fixAndRun(path string) error {
 		return errors.New(fmt.Sprintf("version fixing for plugin migrations at %s failed: %s", path, err.Error()))
 	}
 	// Run the copied migrations with goose
-	pgStr := fmt.Sprintf("postgres://%s:%d/%s?sslmode=disable", m.DBConfig.Hostname, m.DBConfig.Port, m.DBConfig.Name)
+	var pgStr string
+	if len(m.DBConfig.User) > 0 && len(m.DBConfig.Password) > 0 {
+		pgStr = fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+			m.DBConfig.User, m.DBConfig.Password, m.DBConfig.Hostname, m.DBConfig.Port, m.DBConfig.Name)
+	} else {
+		pgStr = fmt.Sprintf("postgres://%s:%d/%s?sslmode=disable", m.DBConfig.Hostname, m.DBConfig.Port, m.DBConfig.Name)
+	}
 	cmd = exec.Command("goose", "postgres", pgStr, "up")
 	cmd.Dir = m.tmpMigDir
 	err = cmd.Run()

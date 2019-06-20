@@ -17,8 +17,9 @@
 package core
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -30,7 +31,7 @@ type BlockChain interface {
 	GetBlockByNumber(blockNumber int64) (Block, error)
 	GetEthLogsWithCustomQuery(query ethereum.FilterQuery) ([]types.Log, error)
 	GetHeaderByNumber(blockNumber int64) (Header, error)
-	GetHeaderByNumbers(blockNumbers []int64) ([]Header, error)
+	GetHeadersByNumbers(blockNumbers []int64) ([]Header, error)
 	GetLogs(contract Contract, startingBlockNumber *big.Int, endingBlockNumber *big.Int) ([]Log, error)
 	GetTransactions(transactionHashes []common.Hash) ([]TransactionModel, error)
 	LastBlock() (*big.Int, error)

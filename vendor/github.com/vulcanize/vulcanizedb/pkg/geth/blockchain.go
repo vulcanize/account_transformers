@@ -18,11 +18,10 @@ package geth
 
 import (
 	"errors"
-	"fmt"
-	"github.com/ethereum/go-ethereum"
 	"math/big"
 	"strconv"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -80,7 +79,7 @@ func (blockChain *BlockChain) GetHeaderByNumber(blockNumber int64) (header core.
 	return blockChain.getPOWHeader(blockNumber)
 }
 
-func (blockChain *BlockChain) GetHeaderByNumbers(blockNumbers []int64) (header []core.Header, err error) {
+func (blockChain *BlockChain) GetHeadersByNumbers(blockNumbers []int64) (header []core.Header, err error) {
 	if blockChain.node.NetworkID == core.KOVAN_NETWORK_ID {
 		return blockChain.getPOAHeaders(blockNumbers)
 	}
@@ -122,7 +121,6 @@ func (blockChain *BlockChain) GetTransactions(transactionHashes []common.Hash) (
 
 	rpcErr := blockChain.rpcClient.BatchCall(batch)
 	if rpcErr != nil {
-		fmt.Println("rpc err")
 		return []core.TransactionModel{}, rpcErr
 	}
 
@@ -149,6 +147,10 @@ func (blockChain *BlockChain) getPOAHeader(blockNumber int64) (header core.Heade
 	if POAHeader.Number == nil {
 		return header, ErrEmptyHeader
 	}
+	time := POAHeader.Time.ToInt()
+	if time == nil {
+		time = big.NewInt(0)
+	}
 	return blockChain.headerConverter.Convert(&types.Header{
 		ParentHash:  POAHeader.ParentHash,
 		UncleHash:   POAHeader.UncleHash,
@@ -161,7 +163,7 @@ func (blockChain *BlockChain) getPOAHeader(blockNumber int64) (header core.Heade
 		Number:      POAHeader.Number.ToInt(),
 		GasLimit:    uint64(POAHeader.GasLimit),
 		GasUsed:     uint64(POAHeader.GasUsed),
-		Time:        POAHeader.Time.ToInt(),
+		Time:        time.Uint64(),
 		Extra:       POAHeader.Extra,
 	}, POAHeader.Hash.String()), nil
 }
@@ -210,7 +212,7 @@ func (blockChain *BlockChain) getPOAHeaders(blockNumbers []int64) (headers []cor
 				Number:      POAHeader.Number.ToInt(),
 				GasLimit:    uint64(POAHeader.GasLimit),
 				GasUsed:     uint64(POAHeader.GasUsed),
-				Time:        POAHeader.Time.ToInt(),
+				Time:        POAHeader.Time.ToInt().Uint64(),
 				Extra:       POAHeader.Extra,
 			}, POAHeader.Hash.String())
 

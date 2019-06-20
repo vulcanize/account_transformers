@@ -20,10 +20,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"log"
 	"math/big"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -78,7 +79,7 @@ func (converter *RpcTransactionConverter) ConvertRpcTransactionsToModels(transac
 			Hash:     transaction.Hash,
 			Nonce:    txData.AccountNonce,
 			Raw:      txRLP,
-			// NOTE: Light Sync transactions don't include receipt; would require separate RPC call
+			// NOTE: Header Sync transactions don't include receipt; would require separate RPC call
 			To:      transaction.Recipient,
 			TxIndex: txIndex.Int64(),
 			Value:   txData.Amount.String(),

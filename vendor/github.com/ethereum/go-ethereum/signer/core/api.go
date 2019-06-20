@@ -22,11 +22,13 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os"
 	"reflect"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/accounts/scwallet"
 	"github.com/ethereum/go-ethereum/accounts/usbwallet"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -92,12 +94,25 @@ type UIClientAPI interface {
 	RegisterUIServer(api *UIServerAPI)
 }
 
+// Validator defines the methods required to validate a transaction against some
+// sanity defaults as well as any underlying 4byte method database.
+//
+// Use fourbyte.Database as an implementation. It is separated out of this package
+// to allow pieces of the signer package to be used without having to load the
+// 7MB embedded 4byte dump.
+type Validator interface {
+	// ValidateTransaction does a number of checks on the supplied transaction, and
+	// returns either a list of warnings, or an error (indicating that the transaction
+	// should be immediately rejected).
+	ValidateTransaction(selector *string, tx *SendTxArgs) (*ValidationMessages, error)
+}
+
 // SignerAPI defines the actual implementation of ExternalAPI
 type SignerAPI struct {
 	chainID     *big.Int
 	am          *accounts.Manager
 	UI          UIClientAPI
-	validator   *Validator
+	validator   Validator
 	rejectMode  bool
 	credentials storage.Storage
 }
@@ -111,7 +126,7 @@ type Metadata struct {
 	Origin    string `json:"Origin"`
 }
 
-func StartClefAccountManager(ksLocation string, nousb, lightKDF bool) *accounts.Manager {
+func StartClefAccountManager(ksLocation string, nousb, lightKDF bool, scpath string) *accounts.Manager {
 	var (
 		backends []accounts.Backend
 		n, p     = keystore.StandardScryptN, keystore.StandardScryptP
@@ -131,15 +146,43 @@ func StartClefAccountManager(ksLocation string, nousb, lightKDF bool) *accounts.
 			backends = append(backends, ledgerhub)
 			log.Debug("Ledger support enabled")
 		}
-		// Start a USB hub for Trezor hardware wallets
-		if trezorhub, err := usbwallet.NewTrezorHub(); err != nil {
-			log.Warn(fmt.Sprintf("Failed to start Trezor hub, disabling: %v", err))
+		// Start a USB hub for Trezor hardware wallets (HID version)
+		if trezorhub, err := usbwallet.NewTrezorHubWithHID(); err != nil {
+			log.Warn(fmt.Sprintf("Failed to start HID Trezor hub, disabling: %v", err))
 		} else {
 			backends = append(backends, trezorhub)
-			log.Debug("Trezor support enabled")
+			log.Debug("Trezor support enabled via HID")
+		}
+		// Start a USB hub for Trezor hardware wallets (WebUSB version)
+		if trezorhub, err := usbwallet.NewTrezorHubWithWebUSB(); err != nil {
+			log.Warn(fmt.Sprintf("Failed to start WebUSB Trezor hub, disabling: %v", err))
+		} else {
+			backends = append(backends, trezorhub)
+			log.Debug("Trezor support enabled via WebUSB")
 		}
 	}
-	return accounts.NewManager(backends...)
+
+	// Start a smart card hub
+	if len(scpath) > 0 {
+		// Sanity check that the smartcard path is valid
+		fi, err := os.Stat(scpath)
+		if err != nil {
+			log.Info("Smartcard socket file missing, disabling", "err", err)
+		} else {
+			if fi.Mode()&os.ModeType != os.ModeSocket {
+				log.Error("Invalid smartcard socket file type", "path", scpath, "type", fi.Mode().String())
+			} else {
+				if schub, err := scwallet.NewHub(scpath, scwallet.Scheme, ksLocation); err != nil {
+					log.Warn(fmt.Sprintf("Failed to start smart card hub, disabling: %v", err))
+				} else {
+					backends = append(backends, schub)
+				}
+			}
+		}
+	}
+
+	// Clef doesn't allow insecure http account unlock.
+	return accounts.NewManager(&accounts.Config{InsecureUnlockAllowed: false}, backends...)
 }
 
 // MetadataFromContext extracts Metadata from a given context.Context
@@ -234,11 +277,11 @@ var ErrRequestDenied = errors.New("Request denied")
 // key that is generated when a new Account is created.
 // noUSB disables USB support that is required to support hardware devices such as
 // ledger and trezor.
-func NewSignerAPI(am *accounts.Manager, chainID int64, noUSB bool, ui UIClientAPI, abidb *AbiDb, advancedMode bool, credentials storage.Storage) *SignerAPI {
+func NewSignerAPI(am *accounts.Manager, chainID int64, noUSB bool, ui UIClientAPI, validator Validator, advancedMode bool, credentials storage.Storage) *SignerAPI {
 	if advancedMode {
 		log.Info("Clef is in advanced mode: will warn instead of reject")
 	}
-	signer := &SignerAPI{big.NewInt(chainID), am, ui, NewValidator(abidb), !advancedMode, credentials}
+	signer := &SignerAPI{big.NewInt(chainID), am, ui, validator, !advancedMode, credentials}
 	if !noUSB {
 		signer.startUSBListener()
 	}
@@ -305,12 +348,10 @@ func (api *SignerAPI) startUSBListener() {
 				status, _ := event.Wallet.Status()
 				log.Info("New wallet appeared", "url", event.Wallet.URL(), "status", status)
 
-				derivationPath := accounts.DefaultBaseDerivationPath
-				if event.Wallet.URL().Scheme == "ledger" {
-					derivationPath = accounts.DefaultLedgerBaseDerivationPath
-				}
-				var nextPath = derivationPath
 				// Derive first N accounts, hardcoded for now
+				var nextPath = make(accounts.DerivationPath, len(accounts.DefaultBaseDerivationPath))
+				copy(nextPath[:], accounts.DefaultBaseDerivationPath[:])
+
 				for i := 0; i < numberOfAccountsToDerive; i++ {
 					acc, err := event.Wallet.Derive(nextPath, true)
 					if err != nil {
@@ -380,6 +421,9 @@ func (api *SignerAPI) New(ctx context.Context) (common.Address, error) {
 		} else {
 			// No error
 			acc, err := be[0].(*keystore.KeyStore).NewAccount(resp.Text)
+			log.Info("Your new key was generated", "address", acc.Address)
+			log.Warn("Please backup your key file!", "path", acc.URL.Path)
+			log.Warn("Please remember your password!")
 			return acc.Address, err
 		}
 	}
@@ -457,7 +501,7 @@ func (api *SignerAPI) SignTransaction(ctx context.Context, args SendTxArgs, meth
 		err    error
 		result SignTxResponse
 	)
-	msgs, err := api.validator.ValidateTransaction(&args, methodSelector)
+	msgs, err := api.validator.ValidateTransaction(methodSelector, &args)
 	if err != nil {
 		return nil, err
 	}
@@ -467,7 +511,6 @@ func (api *SignerAPI) SignTransaction(ctx context.Context, args SendTxArgs, meth
 			return nil, err
 		}
 	}
-
 	req := SignTxRequest{
 		Transaction: args,
 		Meta:        MetadataFromContext(ctx),

@@ -30,10 +30,6 @@
   source = "gopkg.in/fsnotify/fsnotify.v1"
 
 [[constraint]]
-  name = "github.com/vulcanize/vulcanizedb"
-  version = "0.0.1"
-
-[[constraint]]
   name = "github.com/sirupsen/logrus"
   version = "1.2.0"
 
@@ -42,5 +38,18 @@
   version = "1.4.0"
 
 [[constraint]]
+  name = "github.com/vulcanize/vulcanizedb"
+  branch = "syncAndPublish_optimizations"
+
+[[constraint]]
   name = "github.com/ethereum/go-ethereum"
-  revision = "cd79bc61a983d6482579d12cdd239b37bbfa12ef"
+  source = "github.com/vulcanize/go-ethereum"
+  branch = "rpc_statediffing"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+
+  [[prune.project]]
+      name = "github.com/ethereum/go-ethereum"
+      unused-packages = false
