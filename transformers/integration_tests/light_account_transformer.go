@@ -23,8 +23,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/fetcher"
-	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
+	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/header/fetcher"
+	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/header/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/core"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres/repositories"

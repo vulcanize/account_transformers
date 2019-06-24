@@ -18,12 +18,13 @@ package light
 
 import (
 	"fmt"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/vulcanize/vulcanizedb/libraries/shared/transformer"
 	"github.com/vulcanize/vulcanizedb/pkg/config"
-	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/fetcher"
-	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/light/repository"
+	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/header/fetcher"
+	"github.com/vulcanize/vulcanizedb/pkg/contract_watcher/header/repository"
 	"github.com/vulcanize/vulcanizedb/pkg/core"
 	"github.com/vulcanize/vulcanizedb/pkg/datastore/postgres"
 

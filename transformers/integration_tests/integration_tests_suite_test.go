@@ -17,10 +17,11 @@
 package integration_tests_test
 
 import (
-	"github.com/spf13/viper"
 	"io/ioutil"
 	"log"
 	"testing"
+
+	"github.com/spf13/viper"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

@@ -17,9 +17,10 @@
 package integration_tests
 
 import (
+	"plugin"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"plugin"
 
 	"github.com/vulcanize/vulcanizedb/libraries/shared/transformer"
 	"github.com/vulcanize/vulcanizedb/libraries/shared/watcher"

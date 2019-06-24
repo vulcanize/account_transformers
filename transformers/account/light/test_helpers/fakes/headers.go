@@ -18,6 +18,7 @@ package fakes
 
 import (
 	"encoding/json"
+
 	"github.com/vulcanize/vulcanizedb/pkg/core"
 )
 
