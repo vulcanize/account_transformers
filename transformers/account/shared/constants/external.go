@@ -78,12 +78,12 @@ func TokenAddresses() []common.Address {
 	return addrs
 }
 
-func accountAddresses() []string {
+func StrAccountAddresses() []string {
 	return getStringSlice("account.addresses")
 }
 
 func AccountAddresses() []common.Address {
-	strAddrs := accountAddresses()
+	strAddrs := StrAccountAddresses()
 	addrs := make([]common.Address, 0, len(strAddrs))
 	for _, strAddr := range strAddrs {
 		addrs = append(addrs, common.HexToAddress(strAddr))

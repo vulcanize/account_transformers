@@ -17,7 +17,6 @@
 package ipfs
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -74,6 +73,8 @@ type Service struct {
 	Resolver IPLDResolver
 	// Chan the processor uses to subscribe to state diff payloads from the Streamer
 	PayloadChan chan statediff.Payload
+	// This serves as a circular buffer for payloads so that we don't run into geth's 20,000 limit
+	CircularBuffer chan statediff.Payload
 	// Used to signal shutdown of the service
 	QuitChan chan bool
 	// A mapping of rpc.IDs to their subscription channels, mapped to their subscription type (hash of the StreamFilters)
@@ -102,6 +103,7 @@ func NewIPFSProcessor(ipfsPath string, db *postgres.DB, ethClient core.EthClient
 		Retriever:         NewCIDRetriever(db),
 		Resolver:          NewIPLDResolver(),
 		PayloadChan:       make(chan statediff.Payload, payloadChanBufferSize),
+		CircularBuffer:    make(chan statediff.Payload, payloadChanBufferSize),
 		QuitChan:          qc,
 		Subscriptions:     make(map[common.Hash]map[rpc.ID]Subscription),
 		SubscriptionTypes: make(map[common.Hash]config.Subscription),
@@ -134,10 +136,34 @@ func (sap *Service) SyncAndPublish(wg *sync.WaitGroup, forwardPayloadChan chan<-
 		return err
 	}
 	wg.Add(1)
+	internalForwardQuitChannel := make(chan bool, 1)
+	// This goroutine awaits payloads from the channel we sent to geth
+	// It then forwards the payloads directly to another channel that serves as a circular buffer
+	// So that the chan we sent to geth does not fill up and trigger a disconnect
 	go func() {
 		for {
 			select {
 			case payload := <-sap.PayloadChan:
+				select {
+				case sap.CircularBuffer <- payload:
+				default:
+					// If buffer is full, pop and append
+					<-sap.CircularBuffer
+					sap.CircularBuffer <- payload
+				}
+			case err = <-sub.Err():
+				log.Error(err)
+			case <-sap.QuitChan:
+				internalForwardQuitChannel <- true
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case payload := <-sap.CircularBuffer:
 				if payload.Err != nil {
 					log.Error(err)
 					continue
@@ -161,9 +187,7 @@ func (sap *Service) SyncAndPublish(wg *sync.WaitGroup, forwardPayloadChan chan<-
 				if err != nil {
 					log.Error(err)
 				}
-			case err = <-sub.Err():
-				log.Error(err)
-			case <-sap.QuitChan:
+			case <-internalForwardQuitChannel:
 				// If we have a ScreenAndServe process running, forward the quit signal to it
 				select {
 				case forwardQuitchan <- true:
@@ -187,7 +211,7 @@ func (sap *Service) ScreenAndServe(wg *sync.WaitGroup, receivePayloadChan <-chan
 		for {
 			select {
 			case payload := <-receivePayloadChan:
-				err := sap.processResponse(payload)
+				err := sap.sendResponse(payload)
 				if err != nil {
 					log.Error(err)
 				}
@@ -200,23 +224,30 @@ func (sap *Service) ScreenAndServe(wg *sync.WaitGroup, receivePayloadChan <-chan
 	}()
 }
 
-func (sap *Service) processResponse(payload IPLDPayload) error {
+func (sap *Service) sendResponse(payload IPLDPayload) error {
+	sap.Lock()
 	for ty, subs := range sap.Subscriptions {
 		// Retreive the subscription paramaters for this subscription type
 		subConfig, ok := sap.SubscriptionTypes[ty]
 		if !ok {
-			return fmt.Errorf("subscription configuration for subscription type %s not available", ty.Hex())
+			log.Errorf("subscription configuration for subscription type %s not available", ty.Hex())
+			continue
 		}
 		response, err := sap.Screener.ScreenResponse(subConfig, payload)
 		if err != nil {
-			return err
+			log.Error(err)
+			continue
 		}
-		for id := range subs {
-			//TODO send payloads to this type of sub
-			sap.serve(id, *response, ty)
-
+		for id, sub := range subs {
+			select {
+			case sub.PayloadChan <- *response:
+				log.Infof("sending seed node payload to subscription %s", id)
+			default:
+				log.Infof("unable to send payload to subscription %s; channel has no receiver", id)
+			}
 		}
 	}
+	sap.Unlock()
 	return nil
 }
 
@@ -317,21 +348,6 @@ func (sap *Service) Stop() error {
 	log.Info("Stopping seed node service")
 	close(sap.QuitChan)
 	return nil
-}
-
-// serve is used to send screened payloads to their requesting sub
-func (sap *Service) serve(id rpc.ID, payload ResponsePayload, ty common.Hash) {
-	sap.Lock()
-	sub, ok := sap.Subscriptions[ty][id]
-	if ok {
-		select {
-		case sub.PayloadChan <- payload:
-			log.Infof("sending seed node payload to subscription %s", id)
-		default:
-			log.Infof("unable to send payload to subscription %s; channel has no receiver", id)
-		}
-	}
-	sap.Unlock()
 }
 
 // close is used to close all listening subscriptions

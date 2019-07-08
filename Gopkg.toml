@@ -46,10 +46,22 @@
   source = "github.com/vulcanize/go-ethereum"
   branch = "rpc_statediffing"
 
+[[override]]
+  name = "github.com/libp2p/go-libp2p"
+  version = "0.1.1"
+
 [prune]
   go-tests = true
   unused-packages = true
 
   [[prune.project]]
-      name = "github.com/ethereum/go-ethereum"
-      unused-packages = false
+    name = "github.com/ethereum/go-ethereum"
+    unused-packages = false
+
+  [[prune.project]]
+    name = "github.com/karalabe/hid"
+    unused-packages = false
+
+  [[prune.project]]
+    name = "github.com/karalabe/usb"
+    unused-packages = false

@@ -17,8 +17,6 @@
 package seed
 
 import (
-	"sync"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/vulcanize/vulcanizedb/libraries/shared/streamer"
@@ -55,10 +53,8 @@ type AccountTransformer struct {
 	TokenRepository repositories.ValueTransferEventRepository
 
 	NextStart     int64
-	routine       bool
 	StreamChannel chan ipfs.ResponsePayload
 	QuitChannel   chan bool
-	WaitGroup     *sync.WaitGroup
 }
 
 func (tbt AccountTransformer) NewTransformer(db *postgres.DB, subCon config.Subscription, client core.RpcClient) transformer.SeedNodeTransformer {
@@ -90,6 +86,7 @@ func (tbt AccountTransformer) Init() error {
 	return err
 }
 
+// Execute is the top-level method for executing the transformation processses
 func (tbt *AccountTransformer) Execute() error {
 	// Subscribe to the seed node service with the given config/filter parameters
 	sub, err := tbt.Streamer.Stream(tbt.StreamChannel, tbt.SubscriptionConfig)

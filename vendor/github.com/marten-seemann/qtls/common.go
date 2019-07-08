@@ -107,6 +107,13 @@ const (
 	scsvRenegotiation uint16 = 0x00ff
 )
 
+type EncryptionLevel uint8
+
+const (
+	EncryptionHandshake EncryptionLevel = iota
+	EncryptionApplication
+)
+
 // CurveID is a tls.CurveID
 type CurveID = tls.CurveID
 
@@ -570,8 +577,8 @@ type Config struct {
 }
 
 type RecordLayer interface {
-	SetReadKey(suite *CipherSuite, trafficSecret []byte)
-	SetWriteKey(suite *CipherSuite, trafficSecret []byte)
+	SetReadKey(encLevel EncryptionLevel, suite *CipherSuite, trafficSecret []byte)
+	SetWriteKey(encLevel EncryptionLevel, suite *CipherSuite, trafficSecret []byte)
 	ReadHandshakeMessage() ([]byte, error)
 	WriteRecord([]byte) (int, error)
 	SendAlert(uint8)
