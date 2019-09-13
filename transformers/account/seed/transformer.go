@@ -91,7 +91,7 @@ func (tbt *AccountTransformer) Execute() error {
 	// Subscribe to the seed node service with the given config/filter parameters
 	sub, err := tbt.Streamer.Stream(tbt.StreamChannel, tbt.SubscriptionConfig)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	for {
 		select {
@@ -112,7 +112,7 @@ func (tbt *AccountTransformer) Execute() error {
 		case <-tbt.QuitChannel:
 			return nil
 		case err := <-sub.Err():
-			return err
+			log.Fatal(err)
 		}
 	}
 }
