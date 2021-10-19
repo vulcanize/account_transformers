@@ -1,3 +1,5 @@
+⛔️ DEPRECATED: This repository is no longer maintained.
+
 # Account Transformers
 
 [![Build Status](https://travis-ci.com/vulcanize/account_transformers.svg?branch=master)](https://travis-ci.com/vulcanize/account_transformers)
